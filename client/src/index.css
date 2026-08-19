@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #f8faf7;
+    @apply antialiased text-emerald-950;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition;
+    background-color: #16a34a;
+    box-shadow: 0 16px 40px -18px rgba(20, 83, 45, 0.28);
+  }
+
+  .btn-primary:hover {
+    background-color: #14532d;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-white px-5 py-2.5 text-sm font-semibold transition hover:bg-emerald-50;
+    color: #14532d;
+  }
+
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-500;
+    background-color: #fb923c;
+    box-shadow: 0 16px 40px -18px rgba(20, 83, 45, 0.28);
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-emerald-100 bg-white px-4 py-3 text-sm outline-none transition focus:ring-2;
+    color: #14532d;
+  }
+
+  .input-field:focus {
+    border-color: #16a34a;
+    --tw-ring-color: #dcfce7;
+  }
+
+  .section-title {
+    @apply font-display text-3xl sm:text-4xl;
+    color: #14532d;
+  }
+
+  .product-img {
+    @apply h-full w-full rounded-2xl object-cover;
+    box-shadow: 0 16px 40px -18px rgba(20, 83, 45, 0.28);
+  }
+}
+
+.gs-home-bg {
+  background-image:
+    radial-gradient(circle at 8% 12%, rgba(163, 230, 53, 0.18), transparent 30%),
+    radial-gradient(circle at 92% 6%, rgba(16, 185, 129, 0.16), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(250, 204, 21, 0.08), transparent 34%);
+}
+
+.gs-dot-vine {
+  background-image: radial-gradient(#86efac 1.4px, transparent 1.5px);
+  background-size: 14px 14px;
+}
+
+@keyframes gs-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-8deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(8deg);
+  }
+}
+
+.gs-float {
+  animation: gs-float 6s ease-in-out infinite;
+}
+
+.gs-float-slow {
+  animation: gs-float 8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gs-float,
+  .gs-float-slow {
+    animation: none;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #invoice-print,
+  #invoice-print * {
+    visibility: visible;
+  }
+
+  #invoice-print {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: white;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
