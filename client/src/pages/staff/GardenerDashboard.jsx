@@ -2,10 +2,11 @@ import { Bug, ClipboardList, Droplets, Leaf, Wheat } from 'lucide-react';
 import PortalDashboard from '../../components/staff/PortalDashboard.jsx';
 import { useStaff } from '../../context/StaffContext.jsx';
 import { ROLE_LABELS } from '../../data/staffData.js';
+import { isAssignedTo } from '../../utils/tasks.js';
 
 const GardenerDashboard = () => {
   const { staff, tasks } = useStaff();
-  const open = tasks.items.filter((item) => item.status !== 'Completed').length;
+  const open = tasks.items.filter((item) => item.status !== 'Completed' && isAssignedTo(item, staff)).length;
 
   return (
     <PortalDashboard
@@ -23,7 +24,6 @@ const GardenerDashboard = () => {
           to: '/staff/my-tasks',
           icon: ClipboardList,
           tint: 'bg-emerald-100 text-emerald-700',
-          comingSoon: true,
         },
         {
           title: 'Irrigation',

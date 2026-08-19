@@ -128,35 +128,6 @@ export const PestsPage = () => {
   );
 };
 
-export const TasksPage = () => {
-  const { tasks } = useStaff();
-  return (
-    <ResourcePage
-      title="Manage Tasks"
-      subtitle="Assign garden work, set priority, and track completion."
-      records={tasks.items}
-      onSave={tasks.save}
-      onDelete={tasks.remove}
-      statusKey="status"
-      defaults={{ title: '', assignee: 'Lead Gardener', priority: 'Medium', due: '', status: 'Pending' }}
-      columns={[
-        { key: 'title', label: 'Task' },
-        { key: 'assignee', label: 'Assignee' },
-        { key: 'priority', label: 'Priority' },
-        { key: 'due', label: 'Due date' },
-        { key: 'status', label: 'Status' },
-      ]}
-      fields={[
-        { name: 'title', label: 'Task title' },
-        { name: 'assignee', label: 'Assignee' },
-        { name: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High'] },
-        { name: 'due', label: 'Due date', type: 'date' },
-        { name: 'status', label: 'Status', type: 'select', options: ['Pending', 'Assigned', 'In Progress', 'Completed'] },
-      ]}
-    />
-  );
-};
-
 export const HarvestsPage = () => {
   const { harvests } = useStaff();
   return (

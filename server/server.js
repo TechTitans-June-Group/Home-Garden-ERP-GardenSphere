@@ -3,8 +3,10 @@ import express from 'express';
 import cors from 'cors';
 import connectDB from './config/db.js';
 import seedUsers from './utils/seedUsers.js';
+import seedTasks from './utils/seedTasks.js';
 import healthRoutes from './routes/healthRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import taskRoutes from './routes/taskRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -26,12 +28,14 @@ app.get('/', (req, res) => {
     docs: {
       health: '/api/health',
       auth: '/api/auth',
+      tasks: '/api/tasks',
     },
   });
 });
 
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/tasks', taskRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: `Route not found: ${req.originalUrl}` });
@@ -43,6 +47,7 @@ const startServer = async () => {
   try {
     await connectDB();
     await seedUsers();
+    await seedTasks();
 
     const server = app.listen(PORT, () => {
       console.log(`GardenSphere API listening on port ${PORT}`);

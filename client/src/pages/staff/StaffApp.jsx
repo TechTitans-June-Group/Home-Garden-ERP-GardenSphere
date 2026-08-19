@@ -6,6 +6,7 @@ import RoleHome from './RoleHome.jsx';
 import ComingSoon from './ComingSoon.jsx';
 import { SystemReportsPage } from './AdminPages.jsx';
 import { ActivityPage, RolesPage, UsersPage } from './UserManagement.jsx';
+import { MyTasksPage, TasksPage } from './TaskPages.jsx';
 
 const StaffApp = () => {
   return (
@@ -27,14 +28,14 @@ const StaffApp = () => {
             <Route path="irrigation" element={<ComingSoon title="Irrigation" />} />
             <Route path="fertilizers" element={<ComingSoon title="Fertilizers" />} />
             <Route path="pests" element={<ComingSoon title="Pests / Diseases" />} />
-            <Route path="tasks" element={<ComingSoon title="Tasks" />} />
+            <Route path="tasks" element={<TasksPage />} />
             <Route path="harvests" element={<ComingSoon title="Harvests" />} />
             <Route path="sales" element={<ComingSoon title="Sales" />} />
             <Route path="manager-reports" element={<ComingSoon title="Reports" />} />
           </Route>
 
           <Route element={<StaffProtected roles={['admin', 'gardener']} />}>
-            <Route path="my-tasks" element={<ComingSoon title="My Tasks" />} />
+            <Route path="my-tasks" element={<MyTasksPage />} />
             <Route path="record-irrigation" element={<ComingSoon title="Irrigation" />} />
             <Route path="maintenance" element={<ComingSoon title="Maintenance" />} />
             <Route path="report-pest" element={<ComingSoon title="Pest Report" />} />

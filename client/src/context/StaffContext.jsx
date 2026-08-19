@@ -19,6 +19,7 @@ import {
   ROLE_PERMISSIONS,
   staffAccounts,
 } from '../data/staffData.js';
+import { NEXT_TASK_STATUS, normalizeTask } from '../utils/tasks.js';
 
 const KEYS = {
   session: 'gs_staff_session',
@@ -29,7 +30,7 @@ const KEYS = {
   irrigation: 'gs_staff_irrigation',
   fertilizers: 'gs_staff_fertilizers',
   pests: 'gs_staff_pests',
-  tasks: 'gs_staff_tasks',
+  tasks: 'gs_staff_tasks_v2',
   harvests: 'gs_staff_harvests',
   sales: 'gs_staff_sales',
   inventory: 'gs_staff_inventory',
@@ -50,8 +51,11 @@ const readJson = (key, fallback) => {
   }
 };
 
-const useStore = (key, initial) => {
-  const [items, setItems] = useState(() => readJson(key, initial));
+const useStore = (key, initial, transform) => {
+  const [items, setItems] = useState(() => {
+    const raw = readJson(key, initial);
+    return transform ? raw.map(transform) : raw;
+  });
   useEffect(() => localStorage.setItem(key, JSON.stringify(items)), [key, items]);
 
   const save = (record) => {
@@ -76,7 +80,7 @@ export const StaffProvider = ({ children }) => {
   const irrigation = useStore(KEYS.irrigation, initialIrrigation);
   const fertilizers = useStore(KEYS.fertilizers, initialFertilizers);
   const pests = useStore(KEYS.pests, initialPests);
-  const tasks = useStore(KEYS.tasks, initialTasks);
+  const taskStore = useStore(KEYS.tasks, initialTasks, normalizeTask);
   const harvests = useStore(KEYS.harvests, initialHarvests);
   const sales = useStore(KEYS.sales, initialSales);
   const inventory = useStore(KEYS.inventory, initialInventory);
@@ -152,7 +156,149 @@ export const StaffProvider = ({ children }) => {
         detail: 'Signed out of the staff portal.',
       });
     }
+    localStorage.removeItem('gs_token');
     setStaff(null);
+  };
+
+  const stampHistory = (action, detail) => ({
+    id: `h-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
+    at: new Date().toISOString(),
+    actorId: staff?.id,
+    actorName: staff?.name || 'System',
+    action,
+    detail,
+  });
+
+  const resolveAssignee = (assigneeId) => {
+    const user = users.items.find((item) => item.id === assigneeId);
+    return user ? { assigneeId: user.id, assignee: user.name } : { assigneeId: '', assignee: '' };
+  };
+
+  const applyTaskRules = (task) => {
+    const next = normalizeTask(task);
+    if (next.assigneeId && next.status === 'Pending') {
+      next.status = 'Assigned';
+    }
+    if (!next.assigneeId && next.status === 'Assigned') {
+      next.status = 'Pending';
+    }
+    if (next.status === 'Completed') {
+      next.completedAt = next.completedAt || new Date().toISOString();
+    } else {
+      next.completedAt = null;
+    }
+    return next;
+  };
+
+  const saveTask = (record) => {
+    const assignee = resolveAssignee(record.assigneeId);
+    let next = applyTaskRules({ ...record, ...assignee });
+    const events = [];
+
+    taskStore.setItems((prev) => {
+      const existing = prev.find((item) => item.id === record.id);
+
+      if (!existing) {
+        events.push({ action: 'Created', detail: 'Task created' });
+        if (next.assignee) {
+          events.push({ action: 'Assigned', detail: `Assigned to ${next.assignee}` });
+        }
+        next = {
+          ...next,
+          id: record.id || `task-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          history: [...events.map((event) => stampHistory(event.action, event.detail)), ...(next.history || [])],
+        };
+        return [next, ...prev];
+      }
+
+      if (existing.title !== next.title) {
+        events.push({ action: 'Updated', detail: `Title changed to "${next.title}"` });
+      }
+      if (existing.description !== next.description) {
+        events.push({ action: 'Updated', detail: 'Description updated' });
+      }
+      if (existing.assigneeId !== next.assigneeId) {
+        events.push({ action: 'Assigned', detail: next.assignee ? `Assigned to ${next.assignee}` : 'Unassigned' });
+      }
+      if (existing.priority !== next.priority) {
+        events.push({ action: 'Updated', detail: `Priority set to ${next.priority}` });
+      }
+      if (existing.due !== next.due) {
+        events.push({ action: 'Updated', detail: next.due ? `Due date set to ${next.due}` : 'Due date cleared' });
+      }
+      if (existing.status !== next.status) {
+        events.push({ action: 'Status updated', detail: `${existing.status} → ${next.status}` });
+      }
+
+      next = {
+        ...existing,
+        ...next,
+        comments: existing.comments,
+        history: [...events.map((event) => stampHistory(event.action, event.detail)), ...(existing.history || [])],
+      };
+      return prev.map((item) => (item.id === existing.id ? next : item));
+    });
+
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: record.id ? 'Updated task' : 'Created task',
+      detail: next.title,
+    });
+    return next;
+  };
+
+  const addTaskComment = (taskId, text) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    taskStore.setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== taskId) return item;
+        return {
+          ...item,
+          comments: [
+            ...item.comments,
+            {
+              id: `c-${Date.now()}`,
+              text: trimmed,
+              authorId: staff?.id,
+              authorName: staff?.name || 'Staff',
+              createdAt: new Date().toISOString(),
+            },
+          ],
+          history: [stampHistory('Comment added', trimmed.slice(0, 80)), ...item.history],
+        };
+      })
+    );
+  };
+
+  const setTaskStatus = (taskId, status) => {
+    const current = taskStore.items.find((item) => item.id === taskId);
+    if (!current) return;
+    saveTask({ ...current, status });
+  };
+
+  const removeTask = (id) => {
+    const current = taskStore.items.find((item) => item.id === id);
+    taskStore.remove(id);
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Deleted task',
+      detail: current?.title || 'A garden task was removed.',
+    });
+  };
+
+  const tasks = {
+    items: taskStore.items,
+    setItems: taskStore.setItems,
+    save: saveTask,
+    remove: removeTask,
+    addComment: addTaskComment,
+    setStatus: setTaskStatus,
+    nextStatus: NEXT_TASK_STATUS,
   };
 
   const createUser = (payload) => {

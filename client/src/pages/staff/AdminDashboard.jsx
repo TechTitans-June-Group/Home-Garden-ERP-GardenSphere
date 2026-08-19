@@ -21,7 +21,7 @@ import { useStaff } from '../../context/StaffContext.jsx';
 import { ROLE_LABELS } from '../../data/staffData.js';
 
 const AdminDashboard = () => {
-  const { staff, users, crops, inventory } = useStaff();
+  const { staff, users, crops, inventory, tasks } = useStaff();
 
   return (
     <PortalDashboard
@@ -95,12 +95,18 @@ const AdminDashboard = () => {
           comingSoon: true,
         },
         {
+          title: 'Task board',
+          description: `${tasks.items.filter((item) => item.status !== 'Completed').length} open garden tasks to assign or complete.`,
+          to: '/staff/tasks',
+          icon: ClipboardList,
+          tint: 'bg-amber-100 text-amber-700',
+        },
+        {
           title: 'My tasks',
           description: 'View assigned work and update status from pending to completed.',
           to: '/staff/my-tasks',
           icon: ClipboardList,
           tint: 'bg-emerald-100 text-emerald-700',
-          comingSoon: true,
         },
         {
           title: 'Maintenance',
