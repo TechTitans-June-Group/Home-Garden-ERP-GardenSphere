@@ -36,8 +36,8 @@ const ResourcePage = ({ title, subtitle, columns, records, fields, defaults, onS
         </button>
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-[28px] bg-white shadow-[0_10px_40px_rgba(20,83,45,0.06)]">
-        <table className="min-w-full text-left text-sm">
+      <div className="mt-6 overflow-hidden rounded-[28px] bg-white shadow-[0_10px_40px_rgba(20,83,45,0.06)]">
+        <table className="w-full table-fixed text-left text-sm">
           <thead className="bg-[#F3F7F1] text-slate-700">
             <tr>
               {columns.map((column) => (

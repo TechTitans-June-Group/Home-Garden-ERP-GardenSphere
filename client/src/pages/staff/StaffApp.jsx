@@ -4,7 +4,8 @@ import StaffLayout from '../../layouts/StaffLayout.jsx';
 import StaffLogin from './StaffLogin.jsx';
 import RoleHome from './RoleHome.jsx';
 import ComingSoon from './ComingSoon.jsx';
-import { RolesPage, SystemReportsPage, UsersPage } from './AdminPages.jsx';
+import { SystemReportsPage } from './AdminPages.jsx';
+import { ActivityPage, RolesPage, UsersPage } from './UserManagement.jsx';
 
 const StaffApp = () => {
   return (
@@ -17,6 +18,7 @@ const StaffApp = () => {
           <Route element={<StaffProtected roles={['admin']} />}>
             <Route path="users" element={<UsersPage />} />
             <Route path="roles" element={<RolesPage />} />
+            <Route path="activity" element={<ActivityPage />} />
             <Route path="reports" element={<SystemReportsPage />} />
           </Route>
 

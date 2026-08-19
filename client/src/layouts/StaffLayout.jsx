@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Bell, Leaf, LogOut, Menu, RefreshCw, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStaff } from '../context/StaffContext.jsx';
 import { ROLE_LABELS } from '../data/staffData.js';
 import { pageTitles, staffMenus } from '../data/staffNav.js';
@@ -10,8 +10,13 @@ const StaffLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const mainRef = useRef(null);
   const groups = staffMenus[staff.role] || [];
   const title = pageTitles[location.pathname] || 'Overview';
+
+  useEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -19,16 +24,16 @@ const StaffLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F3F7F1] lg:grid lg:grid-cols-[250px_1fr]">
+    <div className="h-screen overflow-hidden bg-[#F3F7F1] lg:grid lg:grid-cols-[250px_1fr]">
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-[250px] flex-col border-r border-emerald-100/80 bg-white lg:static ${
+        className={`fixed inset-y-0 left-0 z-40 flex h-screen w-[250px] flex-col border-r border-emerald-100/80 bg-white lg:static ${
           open ? 'flex' : 'hidden lg:flex'
         }`}
       >
-        <div className="flex items-center justify-between px-5 py-5">
+        <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#14532D] text-white">
-              <Leaf size={20} />
+            <span className="grid h-9 w-9 place-items-center rounded-2xl bg-[#14532D] text-white">
+              <Leaf size={18} />
             </span>
             <div>
               <p className="text-sm font-bold text-slate-900">GardenSphere</p>
@@ -42,11 +47,11 @@ const StaffLayout = () => {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 pb-4">
+        <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-2">
           {groups.map((group) => (
-            <div key={group.group} className="mb-5">
-              <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{group.group}</p>
-              <div className="grid gap-1">
+            <div key={group.group} className="mb-3">
+              <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">{group.group}</p>
+              <div className="grid gap-0.5">
                 {group.items.map((item) => (
                   <NavLink
                     key={item.to + item.label}
@@ -54,14 +59,14 @@ const StaffLayout = () => {
                     end={item.end}
                     onClick={() => setOpen(false)}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 rounded-r-2xl px-3 py-2.5 text-sm font-medium ${
+                      `flex items-center gap-3 rounded-r-2xl px-3 py-1.5 text-sm font-medium ${
                         isActive
                           ? 'border-l-4 border-[#16A34A] bg-[#E7F8EC] text-[#15803D]'
                           : 'border-l-4 border-transparent text-slate-600 hover:bg-slate-50'
                       }`
                     }
                   >
-                    <item.icon size={17} />
+                    <item.icon size={16} />
                     {item.label}
                   </NavLink>
                 ))}
@@ -81,8 +86,8 @@ const StaffLayout = () => {
         </div>
       </aside>
 
-      <div className="flex min-h-screen flex-col">
-        <header className="flex items-center justify-between gap-3 px-4 py-4 lg:px-8">
+      <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+        <header className="flex shrink-0 items-center justify-between gap-3 px-4 py-4 lg:px-8">
           <div className="flex items-center gap-3">
             <button type="button" className="rounded-2xl bg-white p-2 shadow-sm lg:hidden" onClick={() => setOpen(true)}>
               <Menu size={18} />
@@ -115,7 +120,7 @@ const StaffLayout = () => {
             </div>
           </div>
         </header>
-        <main className="flex-1 px-4 pb-8 lg:px-8">
+        <main ref={mainRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-6 lg:px-8">
           <Outlet />
         </main>
       </div>
@@ -124,3 +129,4 @@ const StaffLayout = () => {
 };
 
 export default StaffLayout;
+

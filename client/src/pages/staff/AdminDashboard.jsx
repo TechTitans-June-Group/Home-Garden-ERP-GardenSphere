@@ -42,11 +42,18 @@ const AdminDashboard = () => {
           tint: 'bg-emerald-100 text-emerald-700',
         },
         {
-          title: 'Role access control',
-          description: 'Review permissions for Admin, Garden Manager, Gardener, Inventory, and Finance.',
+          title: 'Role & permission control',
+          description: 'Assign roles and turn permissions on or off for every staff workspace.',
           to: '/staff/roles',
           icon: Shield,
           tint: 'bg-lime-100 text-lime-700',
+        },
+        {
+          title: 'User activity',
+          description: 'Review logins, role changes, password resets, and account deactivations.',
+          to: '/staff/activity',
+          icon: ClipboardList,
+          tint: 'bg-sky-100 text-sky-700',
         },
         {
           title: 'System reports',

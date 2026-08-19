@@ -5,6 +5,7 @@ import {
   Droplets,
   FlaskConical,
   LayoutDashboard,
+  History,
   Leaf,
   Package,
   PieChart,
@@ -28,6 +29,7 @@ export const staffMenus = {
       items: [
         { to: '/staff/users', label: 'Users', icon: Users },
         { to: '/staff/roles', label: 'Roles', icon: ClipboardList },
+        { to: '/staff/activity', label: 'User Activity', icon: History },
       ],
     },
     {
@@ -152,6 +154,7 @@ export const pageTitles = {
   '/staff/': 'Overview',
   '/staff/users': 'Users',
   '/staff/roles': 'Roles',
+  '/staff/activity': 'User Activity',
   '/staff/reports': 'System Reports',
   '/staff/crops': 'Crops',
   '/staff/irrigation': 'Irrigation',

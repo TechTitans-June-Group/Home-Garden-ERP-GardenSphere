@@ -6,8 +6,40 @@ export const ROLE_LABELS = {
   finance_manager: 'Finance Manager',
 };
 
+export const ALL_PERMISSIONS = [
+  'Full system access',
+  'Manage Users',
+  'Manage Roles',
+  'Manage Permissions',
+  'Reset Passwords',
+  'View User Activity',
+  'View System Reports',
+  'Manage Crops',
+  'Manage Irrigation',
+  'Manage Fertilizers',
+  'Manage Pests/Diseases',
+  'Manage Tasks',
+  'Manage Harvests',
+  'Manage Sales',
+  'View Reports',
+  'View Tasks',
+  'Update Tasks',
+  'Record Irrigation',
+  'Record Maintenance',
+  'Report Pest/Disease',
+  'Record Harvest',
+  'Crop Updates',
+  'Manage Inventory',
+  'Manage Purchases',
+  'Manage Suppliers',
+  'Manage Stock Transactions',
+  'Manage Expenses',
+  'Manage Income',
+  'View Financial Reports',
+];
+
 export const ROLE_PERMISSIONS = {
-  admin: ['Manage Users', 'Manage Roles', 'View System Reports', 'Full system access'],
+  admin: ['Manage Users', 'Manage Roles', 'Manage Permissions', 'Reset Passwords', 'View User Activity', 'View System Reports', 'Full system access'],
   garden_manager: [
     'Manage Crops',
     'Manage Irrigation',
@@ -25,6 +57,7 @@ export const ROLE_PERMISSIONS = {
     'Record Maintenance',
     'Report Pest/Disease',
     'Record Harvest',
+    'Crop Updates',
   ],
   inventory_manager: [
     'Manage Inventory',
@@ -44,6 +77,7 @@ export const staffAccounts = [
     role: 'admin',
     phone: '0771000001',
     status: 'Active',
+    lastLogin: '2026-08-19T08:12:00',
   },
   {
     id: 'u-manager',
@@ -53,6 +87,7 @@ export const staffAccounts = [
     role: 'garden_manager',
     phone: '0771000002',
     status: 'Active',
+    lastLogin: '2026-08-19T07:40:00',
   },
   {
     id: 'u-gardener',
@@ -62,6 +97,7 @@ export const staffAccounts = [
     role: 'gardener',
     phone: '0771000003',
     status: 'Active',
+    lastLogin: '2026-08-19T06:55:00',
   },
   {
     id: 'u-inventory',
@@ -71,6 +107,7 @@ export const staffAccounts = [
     role: 'inventory_manager',
     phone: '0771000004',
     status: 'Active',
+    lastLogin: '2026-08-18T16:20:00',
   },
   {
     id: 'u-finance',
@@ -80,6 +117,50 @@ export const staffAccounts = [
     role: 'finance_manager',
     phone: '0771000005',
     status: 'Active',
+    lastLogin: '2026-08-18T11:05:00',
+  },
+];
+
+export const initialActivity = [
+  {
+    id: 'act-1',
+    time: '2026-08-19T08:12:00',
+    actorName: 'System Admin',
+    actorId: 'u-admin',
+    userName: 'System Admin',
+    userId: 'u-admin',
+    action: 'Logged in',
+    detail: 'Signed in to the Admin portal.',
+  },
+  {
+    id: 'act-2',
+    time: '2026-08-19T07:40:00',
+    actorName: 'Garden Manager',
+    actorId: 'u-manager',
+    userName: 'Garden Manager',
+    userId: 'u-manager',
+    action: 'Logged in',
+    detail: 'Signed in to the Garden Manager portal.',
+  },
+  {
+    id: 'act-3',
+    time: '2026-08-18T15:22:00',
+    actorName: 'System Admin',
+    actorId: 'u-admin',
+    userName: 'Lead Gardener',
+    userId: 'u-gardener',
+    action: 'Assigned role',
+    detail: 'Role set to Gardener.',
+  },
+  {
+    id: 'act-4',
+    time: '2026-08-18T14:10:00',
+    actorName: 'System Admin',
+    actorId: 'u-admin',
+    userName: 'Inventory Manager',
+    userId: 'u-inventory',
+    action: 'Updated user',
+    detail: 'Phone number was updated.',
   },
 ];
 
