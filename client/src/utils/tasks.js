@@ -56,3 +56,15 @@ export const isTaskManager = (role) => ['admin', 'garden_manager'].includes(role
 
 export const isAssignedTo = (task, staff) =>
   Boolean(staff) && (task.assigneeId === staff.id || task.assignee === staff.name);
+
+export const dueTone = (task) => {
+  if (!task?.due || task.status === 'Completed') return 'normal';
+  const due = new Date(`${task.due}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.round((due - today) / 86400000);
+  if (diff < 0) return 'overdue';
+  if (diff === 0) return 'today';
+  if (diff === 1) return 'tomorrow';
+  return 'normal';
+};

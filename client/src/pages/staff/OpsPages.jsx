@@ -1,6 +1,5 @@
 import ResourcePage from '../../components/staff/ResourcePage.jsx';
 import { useStaff } from '../../context/StaffContext.jsx';
-import { formatPrice } from '../../utils/format.js';
 
 export const InventoryPage = () => {
   const { inventory } = useStaff();
@@ -176,29 +175,4 @@ export const IncomePage = () => {
   );
 };
 
-export const FinanceReportsPage = () => {
-  const { expenses, income } = useStaff();
-  const totalIncome = income.items.reduce((sum, item) => sum + Number(item.amount), 0);
-  const totalExpense = expenses.items.reduce((sum, item) => sum + Number(item.amount), 0);
-
-  return (
-    <div>
-      <h1 className="font-display text-3xl text-gs-deep">Financial Reports</h1>
-      <p className="mt-1 text-emerald-800">Income, expenses, and net profit from GardenSphere operations.</p>
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <article className="rounded-3xl bg-white p-6 shadow-sm">
-          <p className="text-sm text-emerald-700">Total income</p>
-          <p className="font-display text-3xl">{formatPrice(totalIncome)}</p>
-        </article>
-        <article className="rounded-3xl bg-white p-6 shadow-sm">
-          <p className="text-sm text-emerald-700">Total expenses</p>
-          <p className="font-display text-3xl">{formatPrice(totalExpense)}</p>
-        </article>
-        <article className="rounded-3xl bg-gs-deep p-6 text-white">
-          <p className="text-sm text-emerald-100">Net profit</p>
-          <p className="font-display text-3xl">{formatPrice(totalIncome - totalExpense)}</p>
-        </article>
-      </div>
-    </div>
-  );
-};
+export { FinanceReportsPage } from './ReportsHub.jsx';

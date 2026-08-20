@@ -4,7 +4,7 @@ import StaffLayout from '../../layouts/StaffLayout.jsx';
 import StaffLogin from './StaffLogin.jsx';
 import RoleHome from './RoleHome.jsx';
 import ComingSoon from './ComingSoon.jsx';
-import { SystemReportsPage } from './AdminPages.jsx';
+import { SystemReportsPage, ManagerReportsPage, FinanceReportsPage, InventoryReportsPage } from './ReportsHub.jsx';
 import { ActivityPage, RolesPage, UsersPage } from './UserManagement.jsx';
 import { MyTasksPage, TasksPage } from './TaskPages.jsx';
 
@@ -31,11 +31,14 @@ const StaffApp = () => {
             <Route path="tasks" element={<TasksPage />} />
             <Route path="harvests" element={<ComingSoon title="Harvests" />} />
             <Route path="sales" element={<ComingSoon title="Sales" />} />
-            <Route path="manager-reports" element={<ComingSoon title="Reports" />} />
+            <Route path="manager-reports" element={<ManagerReportsPage />} />
+          </Route>
+
+          <Route element={<StaffProtected roles={['gardener']} />}>
+            <Route path="my-tasks" element={<MyTasksPage />} />
           </Route>
 
           <Route element={<StaffProtected roles={['admin', 'gardener']} />}>
-            <Route path="my-tasks" element={<MyTasksPage />} />
             <Route path="record-irrigation" element={<ComingSoon title="Irrigation" />} />
             <Route path="maintenance" element={<ComingSoon title="Maintenance" />} />
             <Route path="report-pest" element={<ComingSoon title="Pest Report" />} />
@@ -47,12 +50,13 @@ const StaffApp = () => {
             <Route path="purchases" element={<ComingSoon title="Purchases" />} />
             <Route path="suppliers" element={<ComingSoon title="Suppliers" />} />
             <Route path="stock" element={<ComingSoon title="Stock Moves" />} />
+            <Route path="inventory-reports" element={<InventoryReportsPage />} />
           </Route>
 
           <Route element={<StaffProtected roles={['admin', 'finance_manager']} />}>
             <Route path="expenses" element={<ComingSoon title="Expenses" />} />
             <Route path="income" element={<ComingSoon title="Income" />} />
-            <Route path="finance-reports" element={<ComingSoon title="Reports" />} />
+            <Route path="finance-reports" element={<FinanceReportsPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/staff" replace />} />

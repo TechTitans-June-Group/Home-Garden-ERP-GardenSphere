@@ -102,11 +102,14 @@
   }
 
   #invoice-print,
-  #invoice-print * {
+  #invoice-print *,
+  #report-print,
+  #report-print * {
     visibility: visible;
   }
 
-  #invoice-print {
+  #invoice-print,
+  #report-print {
     position: absolute;
     inset: 0;
     width: 100%;

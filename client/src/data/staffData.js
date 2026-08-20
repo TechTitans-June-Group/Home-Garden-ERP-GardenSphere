@@ -356,6 +356,8 @@ export const initialHarvests = [
   { id: 'h1', crop: 'Cherry Tomato', date: '2026-08-18', quantity: 8, unit: 'KG', grade: 'Grade A', location: 'Bed A1' },
   { id: 'h2', crop: 'Strawberry', date: '2026-08-16', quantity: 4, unit: 'Box', grade: 'Premium', location: 'Fruit bed' },
   { id: 'h3', crop: 'Mint', date: '2026-08-19', quantity: 12, unit: 'Bunch', grade: 'Grade A', location: 'Herb bed' },
+  { id: 'h4', crop: 'Lettuce', date: '2026-07-12', quantity: 20, unit: 'Bunch', grade: 'Grade A', location: 'Bed C1' },
+  { id: 'h5', crop: 'Mint', date: '2025-12-20', quantity: 9, unit: 'Bunch', grade: 'Grade B', location: 'Herb bed' },
 ];
 
 export const initialSales = [
@@ -394,12 +396,16 @@ export const initialExpenses = [
   { id: 'e2', category: 'Fertilizers', description: 'Compost bags', date: '2026-08-11', amount: 4800, method: 'Bank' },
   { id: 'e3', category: 'Water', description: 'Monthly water bill', date: '2026-08-01', amount: 2200, method: 'Bank' },
   { id: 'e4', category: 'Tools', description: 'Replacement trowel', date: '2026-08-09', amount: 650, method: 'Cash' },
+  { id: 'e5', category: 'Water', description: 'July water bill', date: '2026-07-01', amount: 2100, method: 'Bank' },
+  { id: 'e6', category: 'Labour', description: 'Year-end bed cleanup', date: '2025-12-15', amount: 1800, method: 'Cash' },
 ];
 
 export const initialIncome = [
   { id: 'in1', category: 'Vegetable sales', description: 'Cherry tomatoes', date: '2026-08-18', amount: 700, method: 'Cash' },
   { id: 'in2', category: 'Vegetable sales', description: 'Lettuce bunches', date: '2026-08-16', amount: 540, method: 'Card' },
   { id: 'in3', category: 'Fruit sales', description: 'Strawberry box', date: '2026-08-12', amount: 890, method: 'Cash' },
+  { id: 'in4', category: 'Vegetable sales', description: 'July lettuce harvest', date: '2026-07-14', amount: 620, method: 'Cash' },
+  { id: 'in5', category: 'Herb sales', description: 'December mint bunches', date: '2025-12-22', amount: 480, method: 'Cash' },
 ];
 
 export const initialMaintenance = [

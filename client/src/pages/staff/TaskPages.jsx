@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  ArrowRight,
   Calendar,
   CheckCircle2,
   ClipboardList,
-  Flag,
   History,
+  LayoutGrid,
+  List,
   MessageSquare,
   Plus,
   Search,
@@ -15,6 +17,7 @@ import { useStaff } from '../../context/StaffContext.jsx';
 import { formatDate, formatDateTime } from '../../utils/format.js';
 import {
   blankTask,
+  dueTone,
   isAssignedTo,
   isTaskManager,
   isTaskOverdue,
@@ -25,34 +28,87 @@ import {
   TASK_STATUSES,
 } from '../../utils/tasks.js';
 
+const COLUMN_HINT = {
+  Pending: 'Create and assign work',
+  Assigned: 'Ready for the gardener',
+  'In Progress': 'Being done in the garden',
+  Completed: 'Finished and recorded',
+};
+
+const dueLabel = (task) => {
+  const tone = dueTone(task);
+  if (tone === 'overdue') return 'Overdue';
+  if (tone === 'today') return 'Due today';
+  if (tone === 'tomorrow') return 'Due tomorrow';
+  return task.due ? formatDate(task.due) : 'No due date';
+};
+
+const dueClass = (task) => {
+  const tone = dueTone(task);
+  if (tone === 'overdue') return 'font-semibold text-red-600';
+  if (tone === 'today') return 'font-semibold text-amber-700';
+  return 'text-slate-500';
+};
+
 const TaskWorkspace = ({ mineOnly = false }) => {
   const { staff, users, tasks } = useStaff();
   const manager = isTaskManager(staff.role);
   const [query, setQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('All');
+  const [assigneeFilter, setAssigneeFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [dueFilter, setDueFilter] = useState('All');
+  const [view, setView] = useState('board');
   const [selectedId, setSelectedId] = useState(null);
   const [draft, setDraft] = useState(null);
   const [tab, setTab] = useState('details');
   const [comment, setComment] = useState('');
+  const [notice, setNotice] = useState('');
 
   const assignees = users.items.filter(
     (user) => ['gardener', 'garden_manager', 'admin'].includes(user.role) && user.status !== 'Inactive'
   );
 
+  const scoped = useMemo(
+    () => (mineOnly ? tasks.items.filter((task) => isAssignedTo(task, staff)) : tasks.items),
+    [mineOnly, staff, tasks.items]
+  );
+
   const records = useMemo(() => {
-    return tasks.items.filter((task) => {
-      if (mineOnly && !isAssignedTo(task, staff)) return false;
+    return scoped.filter((task) => {
+      if (statusFilter !== 'All' && task.status !== statusFilter) return false;
       if (priorityFilter !== 'All' && task.priority !== priorityFilter) return false;
+      if (assigneeFilter === 'Unassigned' && task.assigneeId) return false;
+      if (assigneeFilter !== 'All' && assigneeFilter !== 'Unassigned' && task.assigneeId !== assigneeFilter) return false;
+      if (dueFilter === 'Overdue' && dueTone(task) !== 'overdue') return false;
+      if (dueFilter === 'Today' && dueTone(task) !== 'today') return false;
       const haystack = `${task.title} ${task.description} ${task.assignee}`.toLowerCase();
       return haystack.includes(query.trim().toLowerCase());
     });
-  }, [mineOnly, priorityFilter, query, staff, tasks.items]);
+  }, [assigneeFilter, dueFilter, priorityFilter, query, scoped, statusFilter]);
+
+  const counts = useMemo(
+    () => ({
+      all: scoped.length,
+      overdue: scoped.filter((task) => dueTone(task) === 'overdue').length,
+      ...Object.fromEntries(TASK_STATUSES.map((status) => [status, scoped.filter((task) => task.status === status).length])),
+    }),
+    [scoped]
+  );
 
   const stored = selectedId && selectedId !== 'new' ? tasks.items.find((task) => task.id === selectedId) : null;
   const selected = selectedId === 'new' ? draft : draft || stored;
   const canEditDetails = manager && Boolean(selected);
   const nextStatus = stored ? NEXT_TASK_STATUS[stored.status] : null;
   const canAdvance = Boolean(stored && nextStatus && (manager || isAssignedTo(stored, staff)));
+  const commentCount = stored?.comments?.length || 0;
+  const historyCount = stored?.history?.length || 0;
+
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = setTimeout(() => setNotice(''), 2200);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   useEffect(() => {
     if (!selectedId || selectedId === 'new') return;
@@ -76,6 +132,8 @@ const TaskWorkspace = ({ mineOnly = false }) => {
     );
   }, [selectedId, tasks.items]);
 
+  const flash = (message) => setNotice(message);
+
   const openCreate = () => {
     setDraft({ ...blankTask(), createdAt: new Date().toISOString() });
     setSelectedId('new');
@@ -83,10 +141,10 @@ const TaskWorkspace = ({ mineOnly = false }) => {
     setComment('');
   };
 
-  const openTask = (task) => {
-    setDraft(null);
+  const openTask = (task, nextTab = 'details') => {
+    setDraft({ ...task });
     setSelectedId(task.id);
-    setTab('details');
+    setTab(nextTab);
     setComment('');
   };
 
@@ -107,6 +165,16 @@ const TaskWorkspace = ({ mineOnly = false }) => {
     const saved = tasks.save(draft);
     setSelectedId(saved.id);
     setDraft(saved);
+    flash(selectedId === 'new' ? 'Task created' : 'Task updated');
+  };
+
+  const advanceTask = (task, event) => {
+    event?.stopPropagation();
+    const next = NEXT_TASK_STATUS[task.status];
+    if (!next) return;
+    if (!manager && !isAssignedTo(task, staff)) return;
+    tasks.setStatus(task.id, next);
+    flash(`Moved to ${next}`);
   };
 
   const submitComment = (event) => {
@@ -115,43 +183,99 @@ const TaskWorkspace = ({ mineOnly = false }) => {
     tasks.addComment(selected.id, comment);
     setComment('');
     setTab('comments');
+    flash('Comment added');
   };
+
+  const removeSelected = () => {
+    if (!selected || selectedId === 'new') return;
+    if (!window.confirm(`Delete “${selected.title}”? This cannot be undone.`)) return;
+    tasks.remove(selected.id);
+    closeDrawer();
+    flash('Task deleted');
+  };
+
+  const canQuickAdvance = (task) =>
+    Boolean(NEXT_TASK_STATUS[task.status] && (manager || isAssignedTo(task, staff)));
 
   return (
     <div>
+      {notice && (
+        <div className="mb-4 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm">
+          {notice}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">{mineOnly ? 'My Tasks' : 'Task Management'}</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="text-sm text-slate-500">
             {mineOnly
-              ? 'View assigned garden work, add comments, and move tasks from assigned to completed.'
-              : 'Create, assign, and track daily gardening tasks from pending through completion.'}
+              ? 'Open a card to comment, then tap the next step when the work is done.'
+              : 'Create work, assign a gardener, then move it Pending → Assigned → In Progress → Completed.'}
           </p>
         </div>
-        {manager && !mineOnly && (
-          <button type="button" className="btn-primary" onClick={openCreate}>
-            <Plus size={16} /> Create task
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-full bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-semibold ${view === 'board' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-500'}`}
+              onClick={() => setView('board')}
+            >
+              <LayoutGrid size={14} /> Board
+            </button>
+            <button
+              type="button"
+              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-semibold ${view === 'list' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-500'}`}
+              onClick={() => setView('list')}
+            >
+              <List size={14} /> List
+            </button>
+          </div>
+          {manager && !mineOnly && (
+            <button type="button" className="btn-primary" onClick={openCreate}>
+              <Plus size={16} /> Create task
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {TASK_STATUSES.map((status) => (
-          <article key={status} className="rounded-[24px] bg-white px-5 py-4 shadow-[0_10px_40px_rgba(20,83,45,0.06)]">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {[
+          ['All', counts.all, 'All tasks'],
+          ...TASK_STATUSES.map((status) => [status, counts[status], COLUMN_HINT[status]]),
+        ].map(([status, value, hint]) => (
+          <button
+            key={status}
+            type="button"
+            onClick={() => setStatusFilter((prev) => (prev === status ? 'All' : status))}
+            className={`rounded-[24px] bg-white px-5 py-4 text-left shadow-[0_10px_40px_rgba(20,83,45,0.06)] transition ${
+              statusFilter === status ? 'ring-2 ring-emerald-400' : 'hover:ring-1 hover:ring-emerald-200'
+            }`}
+          >
             <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{status}</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">
-              {records.filter((task) => task.status === status).length}
-            </p>
-          </article>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
+            <p className="mt-1 text-xs text-slate-400">{hint}</p>
+          </button>
         ))}
       </div>
+
+      {counts.overdue > 0 && (
+        <button
+          type="button"
+          onClick={() => setDueFilter((prev) => (prev === 'Overdue' ? 'All' : 'Overdue'))}
+          className={`mt-4 w-full rounded-2xl px-4 py-3 text-left text-sm font-semibold ${
+            dueFilter === 'Overdue' ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'
+          }`}
+        >
+          {counts.overdue} overdue task{counts.overdue === 1 ? '' : 's'} — click to {dueFilter === 'Overdue' ? 'show all' : 'focus on them'}
+        </button>
+      )}
 
       <div className="mt-5 flex flex-wrap gap-3">
         <label className="relative min-w-[220px] flex-1">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             className="input-field pl-10"
-            placeholder="Search tasks, descriptions, or assignees"
+            placeholder="Search by title, description, or person"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -164,60 +288,179 @@ const TaskWorkspace = ({ mineOnly = false }) => {
             </option>
           ))}
         </select>
+        {!mineOnly && (
+          <select className="input-field w-48" value={assigneeFilter} onChange={(event) => setAssigneeFilter(event.target.value)}>
+            <option value="All">All people</option>
+            <option value="Unassigned">Unassigned</option>
+            {assignees.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <select className="input-field w-40" value={dueFilter} onChange={(event) => setDueFilter(event.target.value)}>
+          <option value="All">Any due date</option>
+          <option value="Today">Due today</option>
+          <option value="Overdue">Overdue</option>
+        </select>
       </div>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-4">
-        {TASK_STATUSES.map((status) => {
-          const column = records.filter((task) => task.status === status);
-          return (
-            <section key={status} className="rounded-[28px] bg-white p-4 shadow-[0_10px_40px_rgba(20,83,45,0.06)]">
-              <div className="mb-3 flex items-center justify-between">
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${TASK_STATUS_STYLES[status]}`}>{status}</span>
-                <span className="text-xs font-semibold text-slate-400">{column.length}</span>
-              </div>
-              <div className="grid gap-3">
-                {column.length === 0 && (
-                  <p className="rounded-2xl border border-dashed border-emerald-100 px-3 py-6 text-center text-sm text-slate-400">
-                    No tasks
-                  </p>
-                )}
-                {column.map((task) => (
-                  <button
-                    key={task.id}
-                    type="button"
-                    onClick={() => openTask(task)}
-                    className={`rounded-2xl border p-4 text-left transition hover:border-emerald-200 hover:shadow-sm ${
-                      selected?.id === task.id ? 'border-emerald-400 bg-emerald-50/70' : 'border-emerald-50 bg-[#F8FBF6]'
-                    }`}
-                  >
-                    <p className="font-semibold text-slate-900">{task.title}</p>
-                    <p className="mt-1 line-clamp-2 text-xs text-slate-500">{task.description || 'No description yet.'}</p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${TASK_PRIORITY_STYLES[task.priority]}`}>
-                        {task.priority}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
-                        <UserRound size={12} />
-                        {task.assignee || 'Unassigned'}
-                      </span>
-                      {task.due && (
-                        <span className={`inline-flex items-center gap-1 text-[11px] ${isTaskOverdue(task) ? 'font-semibold text-red-600' : 'text-slate-500'}`}>
-                          <Calendar size={12} />
-                          {formatDate(task.due)}
-                        </span>
+      {records.length === 0 && (
+        <div className="mt-6 rounded-[28px] bg-white px-6 py-12 text-center shadow-[0_10px_40px_rgba(20,83,45,0.06)]">
+          <ClipboardList className="mx-auto text-emerald-500" size={32} />
+          <p className="mt-3 text-lg font-semibold text-slate-900">No tasks match these filters</p>
+          <p className="mt-1 text-sm text-slate-500">Clear a filter or create a new garden task to get started.</p>
+          {manager && !mineOnly && (
+            <button type="button" className="btn-primary mt-4" onClick={openCreate}>
+              <Plus size={16} /> Create task
+            </button>
+          )}
+        </div>
+      )}
+
+      {view === 'board' && records.length > 0 && (
+        <div className="mt-6 grid gap-4 xl:grid-cols-4">
+          {TASK_STATUSES.filter((status) => statusFilter === 'All' || statusFilter === status).map((status) => {
+            const column = records.filter((task) => task.status === status);
+            return (
+              <section key={status} className="flex min-h-[280px] flex-col rounded-[28px] bg-white p-4 shadow-[0_10px_40px_rgba(20,83,45,0.06)]">
+                <div className="mb-3">
+                  <div className="flex items-center justify-between">
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${TASK_STATUS_STYLES[status]}`}>{status}</span>
+                    <span className="text-xs font-semibold text-slate-400">{column.length}</span>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-400">{COLUMN_HINT[status]}</p>
+                </div>
+                <div className="grid flex-1 content-start gap-3">
+                  {column.length === 0 && (
+                    <p className="rounded-2xl border border-dashed border-emerald-100 px-3 py-8 text-center text-sm text-slate-400">
+                      Nothing here yet
+                    </p>
+                  )}
+                  {column.map((task) => (
+                    <article
+                      key={task.id}
+                      className={`rounded-2xl border p-4 transition hover:border-emerald-200 hover:shadow-sm ${
+                        selected?.id === task.id ? 'border-emerald-400 bg-emerald-50/70' : 'border-emerald-50 bg-[#F8FBF6]'
+                      }`}
+                    >
+                      <button type="button" className="w-full text-left" onClick={() => openTask(task)}>
+                        <p className="font-semibold text-slate-900">{task.title}</p>
+                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+                          {task.description || 'No description yet. Open to add one.'}
+                        </p>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${TASK_PRIORITY_STYLES[task.priority]}`}>
+                            {task.priority}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
+                            <UserRound size={12} />
+                            {task.assignee || 'Unassigned'}
+                          </span>
+                          <span className={`inline-flex items-center gap-1 text-[11px] ${dueClass(task)}`}>
+                            <Calendar size={12} />
+                            {dueLabel(task)}
+                          </span>
+                        </div>
+                      </button>
+                      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-emerald-100/80 pt-3">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-emerald-50"
+                          onClick={() => openTask(task, 'comments')}
+                        >
+                          <MessageSquare size={12} />
+                          {task.comments?.length || 0} comments
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-emerald-50"
+                          onClick={() => openTask(task, 'history')}
+                        >
+                          <History size={12} />
+                          History
+                        </button>
+                        {canQuickAdvance(task) && (
+                          <button
+                            type="button"
+                            className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#16A34A] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#14532D]"
+                            onClick={(event) => advanceTask(task, event)}
+                          >
+                            {NEXT_TASK_STATUS[task.status]}
+                            <ArrowRight size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+
+      {view === 'list' && records.length > 0 && (
+        <div className="mt-6 overflow-x-auto rounded-[28px] bg-white shadow-[0_10px_40px_rgba(20,83,45,0.06)]">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className="bg-[#F3F7F1] text-slate-700">
+              <tr>
+                <th className="px-4 py-3 font-semibold">Task</th>
+                <th className="px-4 py-3 font-semibold">Assignee</th>
+                <th className="px-4 py-3 font-semibold">Priority</th>
+                <th className="px-4 py-3 font-semibold">Due</th>
+                <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold">Comments</th>
+                <th className="px-4 py-3 font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((task) => (
+                <tr key={task.id} className="border-t border-emerald-50">
+                  <td className="px-4 py-3">
+                    <button type="button" className="text-left font-semibold text-slate-900 hover:text-emerald-700" onClick={() => openTask(task)}>
+                      {task.title}
+                    </button>
+                    <p className="mt-1 line-clamp-1 text-xs text-slate-500">{task.description || 'No description'}</p>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{task.assignee || 'Unassigned'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${TASK_PRIORITY_STYLES[task.priority]}`}>
+                      {task.priority}
+                    </span>
+                  </td>
+                  <td className={`px-4 py-3 ${dueClass(task)}`}>{dueLabel(task)}</td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${TASK_STATUS_STYLES[task.status]}`}>{task.status}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button type="button" className="font-semibold text-emerald-700" onClick={() => openTask(task, 'comments')}>
+                      {task.comments?.length || 0}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className="font-semibold text-gs-primary" onClick={() => openTask(task)}>
+                        Open
+                      </button>
+                      {canQuickAdvance(task) && (
+                        <button type="button" className="font-semibold text-emerald-700" onClick={(event) => advanceTask(task, event)}>
+                          {NEXT_TASK_STATUS[task.status]}
+                        </button>
                       )}
                     </div>
-                  </button>
-                ))}
-              </div>
-            </section>
-          );
-        })}
-      </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-gs-deep/40">
-          <aside className="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl">
+        <div className="fixed inset-0 z-50 flex justify-end bg-gs-deep/40" onClick={closeDrawer} role="presentation">
+          <aside className="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
             <div className="flex items-start justify-between gap-3 border-b border-emerald-50 px-6 py-5">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-600">
@@ -225,17 +468,34 @@ const TaskWorkspace = ({ mineOnly = false }) => {
                 </p>
                 <h2 className="mt-1 text-2xl font-bold text-slate-900">{selected.title || 'Create a garden task'}</h2>
               </div>
-              <button type="button" className="rounded-full p-2 text-slate-500 hover:bg-slate-50" onClick={closeDrawer}>
+              <button type="button" className="rounded-full p-2 text-slate-500 hover:bg-slate-50" onClick={closeDrawer} aria-label="Close">
                 <X size={18} />
               </button>
             </div>
 
+            {selectedId !== 'new' && (
+              <div className="grid grid-cols-4 gap-2 border-b border-emerald-50 px-6 py-4">
+                {TASK_STATUSES.map((status, index) => {
+                  const currentIndex = TASK_STATUSES.indexOf(stored?.status || selected.status);
+                  const reached = index <= currentIndex;
+                  return (
+                    <div key={status} className="text-center">
+                      <div className={`mx-auto h-2 rounded-full ${reached ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                      <p className={`mt-2 text-[10px] font-semibold ${status === stored?.status ? 'text-emerald-700' : 'text-slate-400'}`}>
+                        {status}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="flex gap-2 border-b border-emerald-50 px-6 py-3">
               {[
-                ['details', 'Details', ClipboardList],
-                ['comments', 'Comments', MessageSquare],
-                ['history', 'History', History],
-              ].map(([key, label, Icon]) => (
+                ['details', 'Details', ClipboardList, null],
+                ['comments', 'Comments', MessageSquare, commentCount],
+                ['history', 'History', History, historyCount],
+              ].map(([key, label, Icon, count]) => (
                 <button
                   key={key}
                   type="button"
@@ -246,6 +506,7 @@ const TaskWorkspace = ({ mineOnly = false }) => {
                   } disabled:cursor-not-allowed disabled:opacity-40`}
                 >
                   <Icon size={14} /> {label}
+                  {count ? <span className="rounded-full bg-white px-1.5 text-[11px]">{count}</span> : null}
                 </button>
               ))}
             </div>
@@ -356,10 +617,11 @@ const TaskWorkspace = ({ mineOnly = false }) => {
 
               {tab === 'comments' && selectedId !== 'new' && (
                 <div>
+                  <p className="mb-3 text-sm text-slate-500">Leave a note for the gardener or manager. Everyone on this task can see it.</p>
                   <div className="grid gap-3">
                     {(stored?.comments || []).length === 0 && (
                       <p className="rounded-2xl border border-dashed border-emerald-100 px-4 py-8 text-center text-sm text-slate-400">
-                        No comments yet.
+                        No comments yet. Add the first update below.
                       </p>
                     )}
                     {(stored?.comments || []).map((entry) => (
@@ -375,11 +637,11 @@ const TaskWorkspace = ({ mineOnly = false }) => {
                   <form className="mt-4 grid gap-3" onSubmit={submitComment}>
                     <textarea
                       className="input-field min-h-24"
-                      placeholder="Add a comment about this task"
+                      placeholder="Example: Bed A1 is watered. A3 still needs work."
                       value={comment}
                       onChange={(event) => setComment(event.target.value)}
                     />
-                    <button type="submit" className="btn-primary justify-self-end">
+                    <button type="submit" className="btn-primary justify-self-end" disabled={!comment.trim()}>
                       Add comment
                     </button>
                   </form>
@@ -387,14 +649,15 @@ const TaskWorkspace = ({ mineOnly = false }) => {
               )}
 
               {tab === 'history' && selectedId !== 'new' && (
-                <ol className="grid gap-3">
+                <ol className="relative grid gap-3 border-l-2 border-emerald-100 pl-4">
                   {(stored?.history || selected.history || []).length === 0 && (
                     <p className="rounded-2xl border border-dashed border-emerald-100 px-4 py-8 text-center text-sm text-slate-400">
-                      No history recorded yet.
+                      History will appear here after the task is created, assigned, or updated.
                     </p>
                   )}
                   {(stored?.history || selected.history || []).map((entry) => (
-                    <li key={entry.id} className="rounded-2xl border border-emerald-50 p-4">
+                    <li key={entry.id} className="relative rounded-2xl border border-emerald-50 bg-white p-4">
+                      <span className="absolute -left-[23px] top-5 h-3 w-3 rounded-full bg-emerald-500" />
                       <p className="text-sm font-semibold text-slate-900">{entry.action}</p>
                       <p className="mt-1 text-sm text-slate-600">{entry.detail}</p>
                       <p className="mt-2 text-xs text-slate-400">
@@ -409,19 +672,15 @@ const TaskWorkspace = ({ mineOnly = false }) => {
             {selectedId !== 'new' && (
               <div className="flex flex-wrap gap-3 border-t border-emerald-50 px-6 py-4">
                 {canAdvance && (
-                  <button type="button" className="btn-primary" onClick={() => tasks.setStatus(selected.id, nextStatus)}>
-                    <Flag size={16} /> Mark {nextStatus}
+                  <button type="button" className="btn-primary" onClick={() => advanceTask(stored)}>
+                    Move to {nextStatus} <ArrowRight size={16} />
                   </button>
                 )}
+                <button type="button" className="btn-secondary" onClick={() => setTab('comments')}>
+                  <MessageSquare size={16} /> Comment
+                </button>
                 {manager && (
-                  <button
-                    type="button"
-                    className="btn-secondary text-red-600 hover:bg-red-50"
-                    onClick={() => {
-                      tasks.remove(selected.id);
-                      closeDrawer();
-                    }}
-                  >
+                  <button type="button" className="btn-secondary text-red-600 hover:bg-red-50" onClick={removeSelected}>
                     Delete
                   </button>
                 )}

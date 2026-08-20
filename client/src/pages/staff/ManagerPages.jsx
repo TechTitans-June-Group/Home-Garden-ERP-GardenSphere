@@ -1,6 +1,5 @@
 import ResourcePage from '../../components/staff/ResourcePage.jsx';
 import { useStaff } from '../../context/StaffContext.jsx';
-import { formatPrice } from '../../utils/format.js';
 
 export const CropsPage = () => {
   const { crops } = useStaff();
@@ -189,29 +188,3 @@ export const SalesPage = () => {
   );
 };
 
-export const ManagerReportsPage = () => {
-  const { crops, harvests, irrigation, pests, tasks, sales } = useStaff();
-  const cards = [
-    ['Crop productivity', `${crops.items.filter((c) => c.status === 'Active').length} active crops`],
-    ['Harvest volume', `${harvests.items.reduce((sum, item) => sum + Number(item.quantity), 0)} units recorded`],
-    ['Irrigation', `${irrigation.items.filter((i) => i.status === 'Due').length} schedules due`],
-    ['Pest cases', `${pests.items.filter((p) => p.status !== 'Resolved').length} open`],
-    ['Task completion', `${tasks.items.filter((t) => t.status === 'Completed').length}/${tasks.items.length} completed`],
-    ['Sales value', formatPrice(sales.items.reduce((sum, item) => sum + Number(item.amount), 0))],
-  ];
-
-  return (
-    <div>
-      <h1 className="font-display text-3xl text-gs-deep">Garden Reports</h1>
-      <p className="mt-1 text-emerald-800">Operations overview for crops, harvests, tasks, and sales.</p>
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {cards.map(([title, value]) => (
-          <article key={title} className="rounded-3xl bg-white p-6 shadow-sm">
-            <p className="text-sm text-emerald-700">{title}</p>
-            <p className="mt-2 font-display text-2xl">{value}</p>
-          </article>
-        ))}
-      </div>
-    </div>
-  );
-};

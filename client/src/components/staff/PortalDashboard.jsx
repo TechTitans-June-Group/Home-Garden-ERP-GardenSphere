@@ -64,7 +64,7 @@ const PortalDashboard = ({ title, greeting, stats = [], modules = [], quickTo })
           )}
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+      <div className={`mt-6 grid gap-3 ${stats.length > 3 ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-3'}`}>
         {stats.map((stat) => (
           <article
             key={stat.label}

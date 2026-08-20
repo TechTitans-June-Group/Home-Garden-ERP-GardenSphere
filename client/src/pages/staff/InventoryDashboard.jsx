@@ -1,11 +1,13 @@
-import { ClipboardList, Package, Truck, Warehouse } from 'lucide-react';
+import { ClipboardList, Package, PieChart, Truck, Warehouse } from 'lucide-react';
 import PortalDashboard from '../../components/staff/PortalDashboard.jsx';
 import { useStaff } from '../../context/StaffContext.jsx';
 import { ROLE_LABELS } from '../../data/staffData.js';
+import { KPI_CARDS, buildKpis, formatKpi } from '../../utils/reports.js';
 
 const InventoryDashboard = () => {
-  const { staff, inventory } = useStaff();
-  const low = inventory.items.filter((item) => Number(item.stock) <= Number(item.minStock)).length;
+  const staffData = useStaff();
+  const { staff, inventory } = staffData;
+  const kpis = buildKpis(staffData);
 
   return (
     <PortalDashboard
@@ -13,7 +15,10 @@ const InventoryDashboard = () => {
       greeting={`Welcome ${staff.name.split(' ')[0]}. Keep seeds, soil, tools, and stock movements in one place.`}
       stats={[
         { label: 'Items', value: String(inventory.items.length) },
-        { label: 'Low stock', value: String(low) },
+        ...KPI_CARDS.filter((card) => card.scopes.includes('inventory')).map((card) => ({
+          label: card.label,
+          value: formatKpi(card, kpis),
+        })),
         { label: 'Signed in as', value: ROLE_LABELS[staff.role] },
       ]}
       modules={[
@@ -21,6 +26,7 @@ const InventoryDashboard = () => {
         { title: 'Purchases', description: 'Record supplier purchases and receiving status.', to: '/staff/purchases', icon: Package, tint: 'bg-amber-100 text-amber-700', comingSoon: true },
         { title: 'Suppliers', description: 'Keep contacts for seed, compost, and tool suppliers.', to: '/staff/suppliers', icon: Truck, tint: 'bg-sky-100 text-sky-700', comingSoon: true },
         { title: 'Stock transactions', description: 'Log stock-in and stock-out against garden materials.', to: '/staff/stock', icon: ClipboardList, tint: 'bg-lime-100 text-lime-700', comingSoon: true },
+        { title: 'Inventory reports', description: 'Low stock alerts and total inventory value in one report.', to: '/staff/inventory-reports', icon: PieChart, tint: 'bg-teal-100 text-teal-700' },
       ]}
     />
   );

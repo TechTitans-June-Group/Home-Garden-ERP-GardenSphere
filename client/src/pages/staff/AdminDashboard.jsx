@@ -19,9 +19,12 @@ import {
 import PortalDashboard from '../../components/staff/PortalDashboard.jsx';
 import { useStaff } from '../../context/StaffContext.jsx';
 import { ROLE_LABELS } from '../../data/staffData.js';
+import { KPI_CARDS, buildKpis, formatKpi } from '../../utils/reports.js';
 
 const AdminDashboard = () => {
-  const { staff, users, crops, inventory, tasks } = useStaff();
+  const staffData = useStaff();
+  const { staff, users, crops, inventory } = staffData;
+  const kpis = buildKpis(staffData);
 
   return (
     <PortalDashboard
@@ -29,8 +32,10 @@ const AdminDashboard = () => {
       greeting={`Welcome back, ${staff.name.split(' ')[0]}. All GardenSphere portals are available from this overview.`}
       quickTo="/staff/users"
       stats={[
-        { label: 'Staff users', value: String(users.items.length) },
-        { label: 'Crops tracked', value: String(crops.items.length) },
+        ...KPI_CARDS.filter((card) => card.scopes.includes('full')).map((card) => ({
+          label: card.label,
+          value: formatKpi(card, kpis),
+        })),
         { label: 'Signed in as', value: ROLE_LABELS[staff.role] },
       ]}
       modules={[
@@ -100,13 +105,6 @@ const AdminDashboard = () => {
           to: '/staff/tasks',
           icon: ClipboardList,
           tint: 'bg-amber-100 text-amber-700',
-        },
-        {
-          title: 'My tasks',
-          description: 'View assigned work and update status from pending to completed.',
-          to: '/staff/my-tasks',
-          icon: ClipboardList,
-          tint: 'bg-emerald-100 text-emerald-700',
         },
         {
           title: 'Maintenance',

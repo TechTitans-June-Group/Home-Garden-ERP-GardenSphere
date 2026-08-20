@@ -31,14 +31,14 @@ const KEYS = {
   fertilizers: 'gs_staff_fertilizers',
   pests: 'gs_staff_pests',
   tasks: 'gs_staff_tasks_v2',
-  harvests: 'gs_staff_harvests',
+  harvests: 'gs_staff_harvests_v2',
   sales: 'gs_staff_sales',
   inventory: 'gs_staff_inventory',
   suppliers: 'gs_staff_suppliers',
   purchases: 'gs_staff_purchases',
   stock: 'gs_staff_stock',
-  expenses: 'gs_staff_expenses',
-  income: 'gs_staff_income',
+  expenses: 'gs_staff_expenses_v2',
+  income: 'gs_staff_income_v2',
   maintenance: 'gs_staff_maintenance',
 };
 
