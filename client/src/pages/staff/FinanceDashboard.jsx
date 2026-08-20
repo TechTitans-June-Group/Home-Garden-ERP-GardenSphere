@@ -12,7 +12,7 @@ const FinanceDashboard = () => {
   return (
     <PortalDashboard
       title="Finance Dashboard"
-      greeting={`Hello ${staff.name.split(' ')[0]}. Track garden expenses, harvest income, and net profit.`}
+      greeting={`Hello ${staff.name.split(' ')[0]}. Net Profit = Total Income − Total Expenses.`}
       stats={[
         ...KPI_CARDS.filter((card) => card.scopes.includes('finance')).map((card) => ({
           label: card.label,
@@ -21,8 +21,8 @@ const FinanceDashboard = () => {
         { label: 'Signed in as', value: ROLE_LABELS[staff.role] },
       ]}
       modules={[
-        { title: 'Expense register', description: 'Seeds, fertilizers, water, tools, labour, and other garden costs.', to: '/staff/expenses', icon: Wallet, tint: 'bg-orange-100 text-orange-700', comingSoon: true },
-        { title: 'Income register', description: 'Vegetable, fruit, plant, and harvest sales income.', to: '/staff/income', icon: BadgeDollarSign, tint: 'bg-emerald-100 text-emerald-700', comingSoon: true },
+        { title: 'Expense register', description: 'Seeds, fertilizers, water, tools, labour, and other garden costs.', to: '/staff/expenses', icon: Wallet, tint: 'bg-orange-100 text-orange-700' },
+        { title: 'Income register', description: 'Vegetable, fruit, plant, and harvest sales income.', to: '/staff/income', icon: BadgeDollarSign, tint: 'bg-emerald-100 text-emerald-700' },
         { title: 'Financial reports', description: 'Expense, income, profit/loss, monthly, and yearly performance.', to: '/staff/finance-reports', icon: PieChart, tint: 'bg-lime-100 text-lime-700' },
       ]}
     />

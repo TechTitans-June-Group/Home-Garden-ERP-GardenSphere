@@ -62,6 +62,7 @@ const Shop = () => {
           <option>Root</option>
           <option>Leafy</option>
           <option>Herb</option>
+          <option>Flower</option>
           <option>Plant</option>
         </select>
       </label>
@@ -72,6 +73,7 @@ const Shop = () => {
           <option>Vegetables</option>
           <option>Fruits</option>
           <option>Herbs</option>
+          <option>Flowers</option>
           <option>Plants</option>
         </select>
       </label>
@@ -113,7 +115,7 @@ const Shop = () => {
       <div className="overflow-hidden rounded-[2rem] bg-[url('/home-veg.jpg')] bg-cover bg-center">
         <div className="bg-gs-deep/70 px-8 py-14 text-white">
           <h1 className="font-display text-4xl">Shop Fresh Harvest</h1>
-          <p className="mt-2 max-w-xl text-emerald-50">Vegetables, fruits, herbs, and plants from GardenSphere beds.</p>
+          <p className="mt-2 max-w-xl text-emerald-50">Vegetables, fruits, herbs, flowers, and plants from GardenSphere beds.</p>
         </div>
       </div>
 

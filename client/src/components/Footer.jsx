@@ -83,7 +83,7 @@ const Footer = () => {
         </div>
       </div>
       <div className="border-t border-white/20 py-5 text-center text-sm text-emerald-100">
-        © {new Date().getFullYear()} GardenSphere · Grow Smarter. Manage Better.
+        © {new Date().getFullYear()} GardenSphere · EGOTECHWORLD PVT LTD · Grow Smarter. Manage Better.
       </div>
     </footer>
   );

@@ -10,7 +10,7 @@ export const ROLE_LABELS = {
 export const ROLE_DESCRIPTIONS = {
   admin: 'Full system access, users, roles, and reports.',
   user: 'View garden activity and personal records.',
-  garden_manager: 'Crops, irrigation, tasks, harvests, and operations.',
+  garden_manager: 'Crops, irrigation, inventory, tasks, harvests, and operations.',
   gardener: 'Assigned tasks, watering, maintenance, and harvest logs.',
   inventory_manager: 'Stock, suppliers, purchases, and low-stock alerts.',
   finance_manager: 'Expenses, income, profit, and financial reports.',

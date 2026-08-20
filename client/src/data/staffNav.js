@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   History,
   Leaf,
+  Mail,
   Package,
   PieChart,
   ShoppingCart,
@@ -30,6 +31,7 @@ export const staffMenus = {
         { to: '/staff/users', label: 'Users', icon: Users },
         { to: '/staff/roles', label: 'Roles', icon: ClipboardList },
         { to: '/staff/activity', label: 'User Activity', icon: History },
+        { to: '/staff/messages', label: 'Messages', icon: Mail },
       ],
     },
     {
@@ -56,6 +58,7 @@ export const staffMenus = {
         { to: '/staff/tasks', label: 'Tasks', icon: ClipboardList },
         { to: '/staff/harvests', label: 'Harvests', icon: Wheat },
         { to: '/staff/sales', label: 'Sales', icon: ShoppingCart },
+        { to: '/staff/harvest-reports', label: 'Harvest Reports', icon: PieChart },
         { to: '/staff/reports', label: 'System Reports', icon: PieChart },
       ],
     },
@@ -83,6 +86,10 @@ export const staffMenus = {
       items: [{ to: '/staff', label: 'Overview', icon: LayoutDashboard, end: true }],
     },
     {
+      group: 'PEOPLE',
+      items: [{ to: '/staff/messages', label: 'Messages', icon: Mail }],
+    },
+    {
       group: 'GARDEN',
       items: [
         { to: '/staff/crops', label: 'Crops', icon: Sprout },
@@ -92,11 +99,22 @@ export const staffMenus = {
       ],
     },
     {
+      group: 'SUPPLY',
+      items: [
+        { to: '/staff/inventory', label: 'Inventory', icon: Warehouse },
+        { to: '/staff/purchases', label: 'Purchases', icon: Package },
+        { to: '/staff/suppliers', label: 'Suppliers', icon: Truck },
+        { to: '/staff/stock', label: 'Stock Moves', icon: ClipboardList },
+        { to: '/staff/inventory-reports', label: 'Inventory Reports', icon: PieChart },
+      ],
+    },
+    {
       group: 'OPERATIONS',
       items: [
         { to: '/staff/tasks', label: 'Tasks', icon: ClipboardList },
         { to: '/staff/harvests', label: 'Harvests', icon: Wheat },
         { to: '/staff/sales', label: 'Sales', icon: ShoppingCart },
+        { to: '/staff/harvest-reports', label: 'Harvest Reports', icon: PieChart },
         { to: '/staff/manager-reports', label: 'Reports', icon: PieChart },
       ],
     },
@@ -155,6 +173,7 @@ export const pageTitles = {
   '/staff/users': 'Users',
   '/staff/roles': 'Roles',
   '/staff/activity': 'User Activity',
+  '/staff/messages': 'Messages',
   '/staff/reports': 'System Reports',
   '/staff/crops': 'Crops',
   '/staff/irrigation': 'Irrigation',
@@ -163,6 +182,7 @@ export const pageTitles = {
   '/staff/tasks': 'Tasks',
   '/staff/harvests': 'Harvests',
   '/staff/sales': 'Sales',
+  '/staff/harvest-reports': 'Harvest Reports',
   '/staff/manager-reports': 'Reports',
   '/staff/my-tasks': 'My Tasks',
   '/staff/record-irrigation': 'Irrigation',

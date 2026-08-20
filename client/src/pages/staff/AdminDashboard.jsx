@@ -5,6 +5,7 @@ import {
   Droplets,
   FlaskConical,
   Leaf,
+  Mail,
   Package,
   PieChart,
   Shield,
@@ -23,7 +24,7 @@ import { KPI_CARDS, buildKpis, formatKpi } from '../../utils/reports.js';
 
 const AdminDashboard = () => {
   const staffData = useStaff();
-  const { staff, users, crops, inventory } = staffData;
+  const { staff, users, crops, inventory, tasks } = staffData;
   const kpis = buildKpis(staffData);
 
   return (
@@ -59,6 +60,13 @@ const AdminDashboard = () => {
           to: '/staff/activity',
           icon: ClipboardList,
           tint: 'bg-sky-100 text-sky-700',
+        },
+        {
+          title: 'Messages',
+          description: 'Read contact form inquiries and reply to customers from the admin inbox.',
+          to: '/staff/messages',
+          icon: Mail,
+          tint: 'bg-lime-100 text-lime-700',
         },
         {
           title: 'System reports',
@@ -120,15 +128,13 @@ const AdminDashboard = () => {
           to: '/staff/harvests',
           icon: Wheat,
           tint: 'bg-yellow-100 text-yellow-800',
-          comingSoon: true,
         },
         {
           title: 'Sales desk',
-          description: 'Customer harvest orders and sale status from pending to completed.',
+          description: 'Link harvest lots to customer sales from pending to completed.',
           to: '/staff/sales',
           icon: ShoppingCart,
           tint: 'bg-rose-100 text-rose-700',
-          comingSoon: true,
         },
         {
           title: 'Inventory register',
@@ -136,7 +142,6 @@ const AdminDashboard = () => {
           to: '/staff/inventory',
           icon: Warehouse,
           tint: 'bg-emerald-100 text-emerald-700',
-          comingSoon: true,
         },
         {
           title: 'Purchases',
@@ -144,7 +149,6 @@ const AdminDashboard = () => {
           to: '/staff/purchases',
           icon: Package,
           tint: 'bg-amber-100 text-amber-700',
-          comingSoon: true,
         },
         {
           title: 'Suppliers',
@@ -152,7 +156,13 @@ const AdminDashboard = () => {
           to: '/staff/suppliers',
           icon: Truck,
           tint: 'bg-sky-100 text-sky-700',
-          comingSoon: true,
+        },
+        {
+          title: 'Stock transactions',
+          description: 'Log stock-in, stock-out, and damaged write-offs against garden materials.',
+          to: '/staff/stock',
+          icon: ClipboardList,
+          tint: 'bg-lime-100 text-lime-700',
         },
         {
           title: 'Expense register',
@@ -160,7 +170,6 @@ const AdminDashboard = () => {
           to: '/staff/expenses',
           icon: Wallet,
           tint: 'bg-orange-100 text-orange-700',
-          comingSoon: true,
         },
         {
           title: 'Income register',
@@ -168,7 +177,6 @@ const AdminDashboard = () => {
           to: '/staff/income',
           icon: BadgeDollarSign,
           tint: 'bg-emerald-100 text-emerald-700',
-          comingSoon: true,
         },
       ]}
     />

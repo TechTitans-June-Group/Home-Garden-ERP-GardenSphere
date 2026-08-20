@@ -4,6 +4,7 @@ import FeedbackModal from '../components/FeedbackModal.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useCustomer } from '../context/CustomerContext.jsx';
 import { formatDate, formatPrice } from '../utils/format.js';
+import { products } from '../data/mockData.js';
 
 const OrderHistory = () => {
   const { orders, submitFeedback } = useCustomer();
@@ -78,6 +79,14 @@ const OrderHistory = () => {
                       <button type="button" onClick={() => setFeedbackOrder(order)} className="text-left font-semibold text-gs-orange">
                         Feedback
                       </button>
+                    )}
+                    {(order.productId || products.find((item) => item.name === order.productName)) && (
+                      <Link
+                        to={`/order/${order.productId || products.find((item) => item.name === order.productName)?.id}?qty=${order.quantity || 1}`}
+                        className="font-semibold text-emerald-800"
+                      >
+                        Order again
+                      </Link>
                     )}
                   </div>
                 </td>

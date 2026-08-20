@@ -1,19 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import CancelModal from '../components/CancelModal.jsx';
 import FeedbackModal from '../components/FeedbackModal.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useCustomer } from '../context/CustomerContext.jsx';
 import { formatDate, formatPrice } from '../utils/format.js';
+import { formatDeliverySlot } from '../utils/checkout.js';
+import { products } from '../data/mockData.js';
 
 const OrderDetails = () => {
   const { id } = useParams();
-  const { orders, cancelOrder, submitFeedback } = useCustomer();
+  const { orders, cancelOrder, submitFeedback, refreshOrders } = useCustomer();
   const navigate = useNavigate();
   const order = orders.find((item) => item.id === id);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    refreshOrders?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   if (!order) return <p className="p-10 text-center">Order not found.</p>;
 
@@ -39,11 +46,20 @@ const OrderDetails = () => {
             <p>Phone: {order.phone}</p>
             <p>Address: {order.address}</p>
             {order.notes && <p>Notes: {order.notes}</p>}
+            {formatDeliverySlot(order) ? <p>Delivery: {formatDeliverySlot(order)}</p> : null}
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link to={`/invoice/${order.id}`} className="btn-primary">
               View Invoice
             </Link>
+            {(order.productId || products.find((item) => item.name === order.productName)) && (
+              <Link
+                to={`/order/${order.productId || products.find((item) => item.name === order.productName)?.id}?qty=${order.quantity || 1}`}
+                className="btn-secondary"
+              >
+                Order again
+              </Link>
+            )}
             {order.status === 'Pending' && (
               <button type="button" onClick={() => setCancelOpen(true)} className="rounded-full bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-600">
                 Cancel Order
@@ -60,10 +76,14 @@ const OrderDetails = () => {
       <CancelModal
         open={cancelOpen}
         onClose={() => setCancelOpen(false)}
-        onConfirm={() => {
-          cancelOrder(order.id);
-          setCancelOpen(false);
-          setMessage('Order cancelled.');
+        onConfirm={async () => {
+          try {
+            await cancelOrder(order.id);
+            setCancelOpen(false);
+            setMessage('Order cancelled.');
+          } catch (err) {
+            setMessage(err.message || 'Could not cancel this order.');
+          }
         }}
       />
       <FeedbackModal

@@ -4,19 +4,30 @@ import { useEffect, useRef, useState } from 'react';
 import { useStaff } from '../context/StaffContext.jsx';
 import { ROLE_LABELS } from '../data/staffData.js';
 import { pageTitles, staffMenus } from '../data/staffNav.js';
+import { formatDateTime } from '../utils/format.js';
 
 const StaffLayout = () => {
-  const { staff, logout } = useStaff();
+  const { staff, logout, notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead } = useStaff();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const mainRef = useRef(null);
+  const notesRef = useRef(null);
   const groups = staffMenus[staff.role] || [];
   const title = pageTitles[location.pathname] || 'Overview';
 
   useEffect(() => {
     if (mainRef.current) mainRef.current.scrollTop = 0;
   }, [location.pathname]);
+
+  useEffect(() => {
+    const onClick = (event) => {
+      if (notesRef.current && !notesRef.current.contains(event.target)) setNotesOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -103,12 +114,54 @@ const StaffLayout = () => {
             >
               <RefreshCw size={16} />
             </button>
-            <button type="button" className="relative rounded-2xl bg-white p-2.5 text-slate-500 shadow-sm" aria-label="Notifications">
-              <Bell size={16} />
-              <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#16A34A] text-[10px] font-bold text-white">
-                3
-              </span>
-            </button>
+            <div className="relative" ref={notesRef}>
+              <button
+                type="button"
+                className="relative rounded-2xl bg-white p-2.5 text-slate-500 shadow-sm hover:text-emerald-700"
+                aria-label="Notifications"
+                onClick={() => setNotesOpen((value) => !value)}
+              >
+                <Bell size={16} />
+                {unreadNotifications > 0 && (
+                  <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#16A34A] px-1 text-[10px] font-bold text-white">
+                    {unreadNotifications}
+                  </span>
+                )}
+              </button>
+              {notesOpen && (
+                <div className="absolute right-0 z-30 mt-2 w-80 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-lg">
+                  <div className="flex items-center justify-between border-b border-emerald-50 px-4 py-3">
+                    <p className="text-sm font-bold text-slate-900">Notifications</p>
+                    {unreadNotifications > 0 && (
+                      <button type="button" className="text-xs font-semibold text-gs-primary" onClick={markAllNotificationsRead}>
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 && (
+                      <p className="px-4 py-6 text-center text-sm text-slate-500">No alerts yet.</p>
+                    )}
+                    {notifications.slice(0, 12).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`block w-full px-4 py-3 text-left ${item.read ? 'bg-white' : 'bg-[#F3F7F1]'}`}
+                        onClick={() => {
+                          markNotificationRead(item.id);
+                          setNotesOpen(false);
+                          if (item.to) navigate(item.to);
+                        }}
+                      >
+                        <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">{item.description}</p>
+                        <p className="mt-1 text-[11px] text-emerald-600">{formatDateTime(item.time)}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2 rounded-full bg-white py-1 pl-1 pr-3 shadow-sm">
               <span className="grid h-9 w-9 place-items-center rounded-full bg-[#14532D] text-sm font-bold text-white">
                 {staff.name.charAt(0)}

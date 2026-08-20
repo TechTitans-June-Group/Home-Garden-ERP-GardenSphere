@@ -11,13 +11,12 @@ const StaffLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     try {
-      const user = login(form.email, form.password);
+      await login(form.email, form.password);
       navigate('/staff');
-      return user;
     } catch (err) {
       setError(err.message);
     }

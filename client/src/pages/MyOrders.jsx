@@ -1,16 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import CancelModal from '../components/CancelModal.jsx';
 import FeedbackModal from '../components/FeedbackModal.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useCustomer } from '../context/CustomerContext.jsx';
 import { formatDate, formatPrice } from '../utils/format.js';
+import { formatDeliverySlot } from '../utils/checkout.js';
+import { products } from '../data/mockData.js';
 
 const MyOrders = () => {
-  const { orders, cancelOrder, submitFeedback } = useCustomer();
+  const { orders, cancelOrder, submitFeedback, refreshOrders } = useCustomer();
   const [cancelId, setCancelId] = useState(null);
   const [feedbackOrder, setFeedbackOrder] = useState(null);
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    refreshOrders?.();
+    // Sync once when My Orders opens; CustomerContext also polls.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const active = orders.filter((order) => order.status === 'Pending' || order.status === 'Confirmed');
 
@@ -40,11 +48,20 @@ const MyOrders = () => {
               </div>
               <p className="mt-1 text-sm text-emerald-700">Order {order.id} · {formatDate(order.orderDate)}</p>
               <p className="mt-2 text-sm">Qty {order.quantity} {order.unit} · {formatPrice(order.total)}</p>
+              {formatDeliverySlot(order) ? <p className="mt-1 text-xs text-emerald-700">Delivery {formatDeliverySlot(order)}</p> : null}
             </div>
             <div className="flex flex-col gap-2">
               <Link to={`/orders/${order.id}`} className="btn-secondary !py-2">
                 View Details
               </Link>
+              {order.productId || products.find((item) => item.name === order.productName) ? (
+                <Link
+                  to={`/order/${order.productId || products.find((item) => item.name === order.productName)?.id}?qty=${order.quantity || 1}`}
+                  className="rounded-full bg-emerald-50 px-4 py-2 text-center text-sm font-semibold text-emerald-800"
+                >
+                  Order again
+                </Link>
+              ) : null}
               {order.status === 'Pending' && (
                 <button type="button" onClick={() => setCancelId(order.id)} className="rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-600">
                   Cancel Order
@@ -58,10 +75,14 @@ const MyOrders = () => {
       <CancelModal
         open={Boolean(cancelId)}
         onClose={() => setCancelId(null)}
-        onConfirm={() => {
-          cancelOrder(cancelId);
-          setCancelId(null);
-          setMessage('Order cancelled.');
+        onConfirm={async () => {
+          try {
+            await cancelOrder(cancelId);
+            setCancelId(null);
+            setMessage('Order cancelled.');
+          } catch (err) {
+            setMessage(err.message || 'Could not cancel this order.');
+          }
         }}
       />
       <FeedbackModal

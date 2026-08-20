@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   BadgeDollarSign,
@@ -63,6 +63,7 @@ const KPI_ICONS = {
   lowStockItems: AlertTriangle,
   inventoryValue: Warehouse,
   totalHarvest: Package,
+  harvestValue: BadgeDollarSign,
   totalExpenses: Wallet,
   totalIncome: BadgeDollarSign,
   netProfit: TrendingUp,
@@ -94,6 +95,17 @@ const countBy = (items, key) => {
 
 export const ReportsHub = ({ scope = 'full' }) => {
   const staffData = useStaff();
+  const { finance } = staffData;
+
+  useEffect(() => {
+    if (scope === 'finance' || scope === 'full') {
+      finance?.refresh?.().catch(() => {});
+    }
+    if (scope === 'garden' || scope === 'full') {
+      staffData.harvests?.refresh?.().catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope]);
   const kpis = useMemo(() => buildKpis(staffData), [staffData]);
   const kpiCards = KPI_CARDS.filter((card) => card.scopes.includes(scope));
   const catalog = REPORT_CATALOG.filter((report) => report.scopes.includes(scope));

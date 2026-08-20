@@ -7,6 +7,10 @@ import ComingSoon from './ComingSoon.jsx';
 import { SystemReportsPage, ManagerReportsPage, FinanceReportsPage, InventoryReportsPage } from './ReportsHub.jsx';
 import { ActivityPage, RolesPage, UsersPage } from './UserManagement.jsx';
 import { MyTasksPage, TasksPage } from './TaskPages.jsx';
+import { InventoryPage, PurchasesPage, StockPage, SuppliersPage } from './InventoryPages.jsx';
+import { ExpensesPage, IncomePage } from './FinancePages.jsx';
+import { HarvestReportsPage, HarvestSalesPage, HarvestsPage, RecordHarvestPage } from './HarvestPages.jsx';
+import MessagesPage from './MessagesPage.jsx';
 
 const StaffApp = () => {
   return (
@@ -24,13 +28,15 @@ const StaffApp = () => {
           </Route>
 
           <Route element={<StaffProtected roles={['admin', 'garden_manager']} />}>
+            <Route path="messages" element={<MessagesPage />} />
             <Route path="crops" element={<ComingSoon title="Crops" />} />
             <Route path="irrigation" element={<ComingSoon title="Irrigation" />} />
             <Route path="fertilizers" element={<ComingSoon title="Fertilizers" />} />
             <Route path="pests" element={<ComingSoon title="Pests / Diseases" />} />
             <Route path="tasks" element={<TasksPage />} />
-            <Route path="harvests" element={<ComingSoon title="Harvests" />} />
-            <Route path="sales" element={<ComingSoon title="Sales" />} />
+            <Route path="harvests" element={<HarvestsPage />} />
+            <Route path="sales" element={<HarvestSalesPage />} />
+            <Route path="harvest-reports" element={<HarvestReportsPage />} />
             <Route path="manager-reports" element={<ManagerReportsPage />} />
           </Route>
 
@@ -42,20 +48,20 @@ const StaffApp = () => {
             <Route path="record-irrigation" element={<ComingSoon title="Irrigation" />} />
             <Route path="maintenance" element={<ComingSoon title="Maintenance" />} />
             <Route path="report-pest" element={<ComingSoon title="Pest Report" />} />
-            <Route path="record-harvest" element={<ComingSoon title="Harvest" />} />
+            <Route path="record-harvest" element={<RecordHarvestPage />} />
           </Route>
 
-          <Route element={<StaffProtected roles={['admin', 'inventory_manager']} />}>
-            <Route path="inventory" element={<ComingSoon title="Inventory" />} />
-            <Route path="purchases" element={<ComingSoon title="Purchases" />} />
-            <Route path="suppliers" element={<ComingSoon title="Suppliers" />} />
-            <Route path="stock" element={<ComingSoon title="Stock Moves" />} />
+          <Route element={<StaffProtected roles={['admin', 'inventory_manager', 'garden_manager']} />}>
+            <Route path="inventory" element={<InventoryPage />} />
+            <Route path="purchases" element={<PurchasesPage />} />
+            <Route path="suppliers" element={<SuppliersPage />} />
+            <Route path="stock" element={<StockPage />} />
             <Route path="inventory-reports" element={<InventoryReportsPage />} />
           </Route>
 
           <Route element={<StaffProtected roles={['admin', 'finance_manager']} />}>
-            <Route path="expenses" element={<ComingSoon title="Expenses" />} />
-            <Route path="income" element={<ComingSoon title="Income" />} />
+            <Route path="expenses" element={<ExpensesPage />} />
+            <Route path="income" element={<IncomePage />} />
             <Route path="finance-reports" element={<FinanceReportsPage />} />
           </Route>
 

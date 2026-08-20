@@ -22,10 +22,10 @@ const InventoryDashboard = () => {
         { label: 'Signed in as', value: ROLE_LABELS[staff.role] },
       ]}
       modules={[
-        { title: 'Inventory register', description: 'Manage seeds, fertilizers, tools, and minimum stock levels.', to: '/staff/inventory', icon: Warehouse, tint: 'bg-emerald-100 text-emerald-700', comingSoon: true },
-        { title: 'Purchases', description: 'Record supplier purchases and receiving status.', to: '/staff/purchases', icon: Package, tint: 'bg-amber-100 text-amber-700', comingSoon: true },
-        { title: 'Suppliers', description: 'Keep contacts for seed, compost, and tool suppliers.', to: '/staff/suppliers', icon: Truck, tint: 'bg-sky-100 text-sky-700', comingSoon: true },
-        { title: 'Stock transactions', description: 'Log stock-in and stock-out against garden materials.', to: '/staff/stock', icon: ClipboardList, tint: 'bg-lime-100 text-lime-700', comingSoon: true },
+        { title: 'Inventory register', description: 'Manage seeds, fertilizers, tools, and minimum stock levels.', to: '/staff/inventory', icon: Warehouse, tint: 'bg-emerald-100 text-emerald-700' },
+        { title: 'Purchases', description: 'Record supplier purchases and receiving status.', to: '/staff/purchases', icon: Package, tint: 'bg-amber-100 text-amber-700' },
+        { title: 'Suppliers', description: 'Keep contacts for seed, compost, and tool suppliers.', to: '/staff/suppliers', icon: Truck, tint: 'bg-sky-100 text-sky-700' },
+        { title: 'Stock transactions', description: 'Log stock-in and stock-out against garden materials.', to: '/staff/stock', icon: ClipboardList, tint: 'bg-lime-100 text-lime-700' },
         { title: 'Inventory reports', description: 'Low stock alerts and total inventory value in one report.', to: '/staff/inventory-reports', icon: PieChart, tint: 'bg-teal-100 text-teal-700' },
       ]}
     />

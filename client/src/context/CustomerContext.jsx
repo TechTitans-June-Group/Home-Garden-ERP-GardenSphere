@@ -3,7 +3,10 @@ import {
   demoCustomer,
   initialNotifications,
   initialOrders,
+  products,
 } from '../data/mockData.js';
+import { cancelCustomerPurchase, fetchCustomerOrders, recordCustomerPurchase, saveCustomerOrderFeedback } from '../services/inventoryService.js';
+import { plotPlantId } from '../utils/gardenGuide.js';
 
 const STORAGE = {
   user: 'gs_customer_user',
@@ -12,6 +15,7 @@ const STORAGE = {
   notifications: 'gs_customer_notifications',
   remember: 'gs_customer_remember',
   designs: 'gs_garden_designs',
+  wishlist: 'gs_customer_wishlist',
 };
 
 const CustomerContext = createContext(null);
@@ -36,6 +40,7 @@ export const CustomerProvider = ({ children }) => {
     readJson(STORAGE.notifications, initialNotifications)
   );
   const [designs, setDesigns] = useState(() => readJson(STORAGE.designs, []));
+  const [wishlistMap, setWishlistMap] = useState(() => readJson(STORAGE.wishlist, {}));
 
   useEffect(() => localStorage.setItem(STORAGE.users, JSON.stringify(users)), [users]);
   useEffect(() => {
@@ -47,19 +52,103 @@ export const CustomerProvider = ({ children }) => {
     () => localStorage.setItem(STORAGE.notifications, JSON.stringify(notifications)),
     [notifications]
   );
-  useEffect(() => localStorage.setItem(STORAGE.designs, JSON.stringify(designs)), [designs]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE.designs, JSON.stringify(designs));
+    } catch {
+      const slim = designs.map(({ photo, ...rest }) => rest);
+      try {
+        localStorage.setItem(STORAGE.designs, JSON.stringify(slim));
+      } catch {
+        /* ignore quota errors */
+      }
+    }
+  }, [designs]);
+  useEffect(() => localStorage.setItem(STORAGE.wishlist, JSON.stringify(wishlistMap)), [wishlistMap]);
 
   const addNotification = (payload) => {
-    setNotifications((prev) => [
-      {
-        id: `n-${Date.now()}`,
-        read: false,
-        time: new Date().toISOString(),
-        ...payload,
-      },
-      ...prev,
-    ]);
+    setNotifications((prev) => {
+      if (payload.key && prev.some((item) => item.key === payload.key)) return prev;
+      return [
+        {
+          id: payload.id || `n-${Date.now()}`,
+          read: false,
+          time: new Date().toISOString(),
+          ...payload,
+        },
+        ...prev,
+      ];
+    });
   };
+
+  const mergeRemoteOrders = (remote, local) => {
+    const remoteRows = (remote || []).map((row) => ({
+      ...row,
+      customerEmail: row.customerEmail || user?.email,
+    }));
+    const remoteIds = new Set(remoteRows.map((row) => row.id));
+    const localOnly = local.filter((row) => !remoteIds.has(row.id));
+    return [
+      ...remoteRows.map((row) => {
+        const existing = local.find((item) => item.id === row.id);
+        return {
+          ...existing,
+          ...row,
+          feedback: row.feedback || existing?.feedback || null,
+        };
+      }),
+      ...localOnly,
+    ];
+  };
+
+  const refreshOrders = async (currentUser = user) => {
+    if (!currentUser?.email) return [];
+    try {
+      const remote = await fetchCustomerOrders(currentUser.email);
+      setOrders((prev) => {
+        const next = mergeRemoteOrders(remote, prev);
+        const changes = prev
+          .map((old) => {
+            const fresh = next.find((item) => item.id === old.id);
+            return fresh && fresh.status !== old.status ? fresh : null;
+          })
+          .filter(Boolean);
+        if (changes.length) {
+          window.setTimeout(() => {
+            changes.forEach((fresh) => {
+              const labels = {
+                Confirmed: ['confirmed', 'Order confirmed', `Order ${fresh.id} was confirmed by GardenSphere staff.`],
+                Completed: ['completed', 'Order completed', `Order ${fresh.id} is complete. You can leave feedback.`],
+                Cancelled: ['cancelled', 'Order cancelled', `Order ${fresh.id} was cancelled.`],
+                Pending: ['order', 'Order updated', `Order ${fresh.id} is now Pending.`],
+              };
+              const note = labels[fresh.status];
+              if (note) {
+                addNotification({
+                  key: `order-${fresh.id}-${fresh.status}`,
+                  type: note[0],
+                  title: note[1],
+                  description: note[2],
+                });
+              }
+            });
+          }, 0);
+        }
+        return next;
+      });
+      return remote;
+    } catch {
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    if (!user?.email) return undefined;
+    refreshOrders(user);
+    const timer = setInterval(() => refreshOrders(user), 8000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email]);
 
   const register = (payload, remember = true) => {
     const exists = users.some((item) => item.email.toLowerCase() === payload.email.toLowerCase());
@@ -101,7 +190,7 @@ export const CustomerProvider = ({ children }) => {
     });
   };
 
-  const placeOrder = (order) => {
+  const placeOrder = async (order) => {
     const created = {
       id: `GS-${Math.floor(24020 + Math.random() * 80)}`,
       orderDate: new Date().toISOString(),
@@ -110,6 +199,25 @@ export const CustomerProvider = ({ children }) => {
       ...order,
       customerEmail: user?.email || order.customerEmail,
     };
+
+    const purchase = await recordCustomerPurchase({
+      productName: created.productName,
+      quantity: created.quantity,
+      unit: created.unit,
+      unitPrice: created.unitPrice,
+      image: created.image,
+      notes: [created.notes, created.deliveryDate && created.deliverySlot ? `Delivery ${created.deliveryDate} ${created.deliverySlot}` : '']
+        .filter(Boolean)
+        .join(' · '),
+      customerName: created.customerName,
+      customerEmail: created.customerEmail,
+      phone: created.phone,
+      address: created.address,
+      orderRef: created.id,
+    });
+
+    created.purchaseId = purchase?.id;
+
     setOrders((prev) => [created, ...prev]);
     addNotification({
       type: 'order',
@@ -119,7 +227,17 @@ export const CustomerProvider = ({ children }) => {
     return created;
   };
 
-  const cancelOrder = (orderId) => {
+  const cancelOrder = async (orderId) => {
+    const existing = orders.find((order) => order.id === orderId);
+    try {
+      await cancelCustomerPurchase({
+        orderRef: orderId,
+        email: user?.email || existing?.customerEmail,
+      });
+    } catch (error) {
+      if (!/not found/i.test(error.message || '')) throw error;
+    }
+
     setOrders((prev) =>
       prev.map((order) => (order.id === orderId ? { ...order, status: 'Cancelled' } : order))
     );
@@ -130,7 +248,17 @@ export const CustomerProvider = ({ children }) => {
     });
   };
 
-  const submitFeedback = (orderId, rating, comment) => {
+  const submitFeedback = async (orderId, rating, comment) => {
+    const existing = orders.find((order) => order.id === orderId);
+    try {
+      await saveCustomerOrderFeedback(orderId, {
+        email: user?.email || existing?.customerEmail,
+        rating,
+        comment,
+      });
+    } catch (error) {
+      if (!/not found/i.test(error.message || '')) throw error;
+    }
     setOrders((prev) =>
       prev.map((order) =>
         order.id === orderId ? { ...order, feedback: { rating, comment } } : order
@@ -149,12 +277,58 @@ export const CustomerProvider = ({ children }) => {
   const unreadCount = notifications.filter((item) => !item.read).length;
   const customerOrders = user
     ? orders.filter(
-        (order) => order.customerEmail === user.email || order.customerName === user.name
+        (order) =>
+          order.customerEmail?.toLowerCase() === user.email.toLowerCase() ||
+          order.customerName === user.name
       )
     : [];
   const gardenDesigns = user
     ? designs.filter((design) => design.customerEmail === user.email)
     : [];
+
+  const wishlistIds = user ? wishlistMap[user.email] || [] : [];
+  const wishlistProducts = products.filter((item) => wishlistIds.includes(item.id));
+
+  const toggleWishlist = (productId) => {
+    if (!user) {
+      throw new Error('Please log in to save favourite harvests.');
+    }
+    setWishlistMap((prev) => {
+      const current = prev[user.email] || [];
+      const next = current.includes(productId)
+        ? current.filter((id) => id !== productId)
+        : [productId, ...current];
+      return { ...prev, [user.email]: next };
+    });
+  };
+
+  const isWishlisted = (productId) => wishlistIds.includes(productId);
+
+  useEffect(() => {
+    if (!user?.email) return undefined;
+    const names = new Set();
+    designs
+      .filter((design) => design.customerEmail === user.email)
+      .forEach((design) => {
+        (design.plots || []).forEach((plot) => {
+          const plant = products.find((item) => item.id === plotPlantId(plot));
+          if (plant) names.add(plant.name.toLowerCase());
+        });
+      });
+    if (!names.size) return undefined;
+    products
+      .filter((item) => item.available)
+      .forEach((item) => {
+        if (!names.has(item.name.toLowerCase())) return;
+        addNotification({
+          key: `harvest-shop-${user.email}-${item.id}`,
+          type: 'harvest',
+          title: `${item.name} is in the shop`,
+          description: `A crop from your garden design is available to order now.`,
+        });
+      });
+    return undefined;
+  }, [user?.email, designs]);
 
   const saveGardenDesign = (design) => {
     if (!user) {
@@ -206,12 +380,17 @@ export const CustomerProvider = ({ children }) => {
       placeOrder,
       cancelOrder,
       submitFeedback,
+      refreshOrders,
       saveGardenDesign,
       deleteGardenDesign,
+      wishlistProducts,
+      wishlistIds,
+      toggleWishlist,
+      isWishlisted,
       markRead,
       markAllRead,
     }),
-    [user, users, customerOrders, gardenDesigns, notifications, unreadCount]
+    [user, users, customerOrders, gardenDesigns, notifications, unreadCount, wishlistIds, wishlistProducts]
   );
 
   return <CustomerContext.Provider value={value}>{children}</CustomerContext.Provider>;

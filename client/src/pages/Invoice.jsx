@@ -3,6 +3,7 @@ import { Leaf, Printer } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useCustomer } from '../context/CustomerContext.jsx';
 import { formatDate, formatPrice } from '../utils/format.js';
+import { formatDeliverySlot } from '../utils/checkout.js';
 
 const Invoice = () => {
   const { id } = useParams();
@@ -49,6 +50,9 @@ const Invoice = () => {
           <div>
             <p className="text-emerald-700">Purchase date</p>
             <p className="font-semibold">{formatDate(order.orderDate)}</p>
+            {formatDeliverySlot(order) ? (
+              <p className="mt-2 text-emerald-800">Delivery {formatDeliverySlot(order)}</p>
+            ) : null}
             <div className="mt-2">
               <StatusBadge status={order.status} />
             </div>

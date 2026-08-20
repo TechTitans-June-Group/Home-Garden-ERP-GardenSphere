@@ -15,6 +15,7 @@ const icons = {
   completed: CheckCircle2,
   cancelled: XCircle,
   harvest: Leaf,
+  garden: Leaf,
   products: Bell,
 };
 
