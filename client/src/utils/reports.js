@@ -8,7 +8,8 @@ export const toNumber = (value) => {
 export const isReadyCrop = (crop) =>
   ['Ready', 'Harvesting'].includes(crop.stage) && (crop.status || 'Active') !== 'Inactive';
 
-export const isLowStock = (item) => toNumber(item.stock) <= toNumber(item.minStock);
+export const isLowStock = (item) =>
+  (item.status || 'Available') !== 'Inactive' && toNumber(item.stock) <= toNumber(item.minStock);
 
 const parseDate = (value) => {
   if (!value) return null;
@@ -41,6 +42,7 @@ export const buildKpis = ({ crops, tasks, inventory, harvests, expenses, income 
   const lowStockItems = inventoryList.filter(isLowStock).length;
   const inventoryValue = inventoryList.reduce((sum, item) => sum + toNumber(item.value), 0);
   const totalHarvest = harvestList.reduce((sum, item) => sum + toNumber(item.quantity), 0);
+  const harvestValue = harvestList.reduce((sum, item) => sum + toNumber(item.totalValue), 0);
   const totalExpenses = expenseList.reduce((sum, item) => sum + toNumber(item.amount), 0);
   const totalIncome = incomeList.reduce((sum, item) => sum + toNumber(item.amount), 0);
 
@@ -53,6 +55,7 @@ export const buildKpis = ({ crops, tasks, inventory, harvests, expenses, income 
     lowStockItems,
     inventoryValue,
     totalHarvest,
+    harvestValue,
     totalExpenses,
     totalIncome,
     netProfit: totalIncome - totalExpenses,
@@ -69,6 +72,7 @@ export const KPI_CARDS = [
   { key: 'lowStockItems', label: 'Low Stock Items', scopes: ['full', 'garden', 'inventory'], format: 'number', tint: 'bg-red-100 text-red-700' },
   { key: 'inventoryValue', label: 'Total Inventory Value', scopes: ['full', 'garden', 'inventory'], format: 'money', tint: 'bg-teal-100 text-teal-800' },
   { key: 'totalHarvest', label: 'Total Harvest', scopes: ['full', 'garden', 'finance'], format: 'harvest', tint: 'bg-orange-100 text-orange-800' },
+  { key: 'harvestValue', label: 'Harvest Value', scopes: ['full', 'garden'], format: 'money', tint: 'bg-yellow-100 text-yellow-800' },
   { key: 'totalExpenses', label: 'Total Expenses', scopes: ['full', 'garden', 'finance'], format: 'money', tint: 'bg-rose-100 text-rose-700' },
   { key: 'totalIncome', label: 'Total Income', scopes: ['full', 'garden', 'finance'], format: 'money', tint: 'bg-emerald-100 text-emerald-800' },
   { key: 'netProfit', label: 'Net Profit', scopes: ['full', 'garden', 'finance'], format: 'money', tint: 'bg-green-100 text-green-800' },
@@ -129,12 +133,28 @@ export const buildReport = (id, data) => {
   }
 
   if (id === 'harvest') {
+    const harvestValueTotal = harvests.reduce((sum, item) => sum + toNumber(item.totalValue), 0);
+    const byCrop = sumBy(harvests, (item) => toNumber(item.quantity), (item) => item.crop);
+    const byGrade = sumBy(harvests, (item) => toNumber(item.quantity), (item) => item.grade);
     return {
-      columns: ['Date', 'Crop', 'Quantity', 'Unit', 'Grade', 'Location'],
-      rows: harvests.map((item) => [item.date, item.crop, item.quantity, item.unit, item.grade, item.location]),
-      summary: `${harvests.length} harvest records · ${kpis.totalHarvest} units total`,
-      bar: { title: 'Harvest quantity by crop', data: sumBy(harvests, (item) => toNumber(item.quantity), (item) => item.crop) },
-      pie: { title: 'Harvest by grade', data: sumBy(harvests, (item) => toNumber(item.quantity), (item) => item.grade) },
+      columns: ['Date', 'Crop', 'Quantity', 'Unit', 'Grade', 'Location', 'Selling price', 'Total value', 'Sales'],
+      rows: harvests.map((item) => [
+        item.date,
+        item.crop,
+        item.quantity,
+        item.unit,
+        item.grade,
+        item.location,
+        `${formatPrice(item.unitPrice || 0)}/${item.unit || 'unit'}`,
+        formatPrice(item.totalValue || 0),
+        item.saleStatus || 'Unlinked',
+      ]),
+      extra: byCrop.map((row) => [row.label, row.amount]),
+      extraTitle: 'Quantity by crop',
+      extraColumns: ['Crop', 'Quantity'],
+      summary: `${harvests.length} harvest records · ${kpis.totalHarvest} units · ${formatPrice(harvestValueTotal)}`,
+      bar: { title: 'Harvest quantity by crop', data: byCrop.map((row) => ({ label: row.label, value: row.amount })) },
+      pie: { title: 'Harvest by grade', data: byGrade.map((row) => ({ label: row.label, value: row.amount })) },
     };
   }
 
@@ -148,7 +168,7 @@ export const buildReport = (id, data) => {
         item.minStock,
         item.unit,
         formatPrice(item.value),
-        isLowStock(item) ? 'Low stock' : 'OK',
+        isLowStock(item) ? item.status || 'Low stock' : item.status || 'OK',
       ]),
       summary: `${inventory.length} items · ${kpis.lowStockItems} low stock · value ${formatPrice(kpis.inventoryValue)}`,
       bar: { title: 'Stock by item', data: inventory.map((item) => ({ label: item.item, value: toNumber(item.stock) })) },
@@ -243,7 +263,7 @@ export const buildReport = (id, data) => {
         ['Total expenses', formatPrice(kpis.totalExpenses)],
         ['Net profit / loss', formatPrice(kpis.netProfit)],
       ],
-      summary: kpis.netProfit >= 0 ? 'Garden operations are in profit.' : 'Garden operations currently show a loss.',
+      summary: `Net Profit = Total Income − Total Expenses · ${formatPrice(kpis.netProfit)}`,
       bar: {
         title: 'Income vs expenses',
         data: [

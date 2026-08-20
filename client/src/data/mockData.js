@@ -223,6 +223,70 @@ export const products = [
     description:
       'A mixed pack of vegetable seedlings started in GardenSphere nurseries. Ready to transplant into home beds.',
   },
+  {
+    id: 15,
+    name: 'Marigolds',
+    category: 'Flowers',
+    cropType: 'Flower',
+    price: 180,
+    unit: 'Bunch',
+    availableQuantity: 24,
+    harvestDate: '2026-08-19',
+    grade: 'Grade A',
+    available: true,
+    featured: true,
+    image: '/products/marigold.jpg',
+    description:
+      'Bright orange garden marigolds that colour the beds and help keep pests away. Easy to plant in home gardens.',
+  },
+  {
+    id: 16,
+    name: 'Sunflowers',
+    category: 'Flowers',
+    cropType: 'Flower',
+    price: 250,
+    unit: 'Stem',
+    availableQuantity: 14,
+    harvestDate: '2026-08-18',
+    grade: 'Premium',
+    available: true,
+    featured: true,
+    image: '/products/sunflower.jpg',
+    description:
+      'Tall sunflowers for sunny garden beds. A cheerful border plant that also attracts pollinators.',
+  },
+  {
+    id: 17,
+    name: 'Garden Roses',
+    category: 'Flowers',
+    cropType: 'Flower',
+    price: 420,
+    unit: 'Bunch',
+    availableQuantity: 10,
+    harvestDate: '2026-08-17',
+    grade: 'Premium',
+    available: true,
+    featured: true,
+    image: '/products/rose.jpg',
+    description:
+      'Fragrant garden roses grown in GardenSphere flower beds. Perfect for a home garden edge or a gift bunch.',
+  },
+  {
+    id: 18,
+    name: 'Hibiscus',
+    category: 'Flowers',
+    cropType: 'Flower',
+    price: 380,
+    unit: 'Pot',
+    availableQuantity: 8,
+    harvestDate: '2026-08-16',
+    grade: 'Grade A',
+    available: true,
+    featured: false,
+    image: '/products/hibiscus.jpg',
+    description:
+      'Tropical hibiscus plants ready for pots or a sunny home-garden corner. Regular blooms in warm weather.',
+  },
 ];
 
 export const categories = [
@@ -243,6 +307,12 @@ export const categories = [
     description: 'Fragrant kitchen herbs picked the same morning',
     image: '/products/mint.jpg',
     tint: 'from-lime-400 to-emerald-600',
+  },
+  {
+    name: 'Flowers',
+    description: 'Colourful blooms for beds, pots, and garden borders',
+    image: '/products/marigold.jpg',
+    tint: 'from-rose-400 to-amber-500',
   },
   {
     name: 'Plants',

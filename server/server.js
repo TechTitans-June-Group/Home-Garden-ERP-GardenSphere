@@ -4,9 +4,17 @@ import cors from 'cors';
 import connectDB from './config/db.js';
 import seedUsers from './utils/seedUsers.js';
 import seedTasks from './utils/seedTasks.js';
+import seedInventory from './utils/seedInventory.js';
 import healthRoutes from './routes/healthRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
+import inventoryRoutes from './routes/inventoryRoutes.js';
+import seedFinance from './utils/seedFinance.js';
+import financeRoutes from './routes/financeRoutes.js';
+import seedHarvest from './utils/seedHarvest.js';
+import harvestRoutes from './routes/harvestRoutes.js';
+import seedContact from './utils/seedContact.js';
+import contactRoutes from './routes/contactRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -16,11 +24,11 @@ const PORT = process.env.PORT || 5000;
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: [process.env.CLIENT_URL || 'http://localhost:5173', 'http://localhost:5174'],
     credentials: true,
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: '6mb' }));
 
 app.get('/', (req, res) => {
   res.json({
@@ -29,6 +37,10 @@ app.get('/', (req, res) => {
       health: '/api/health',
       auth: '/api/auth',
       tasks: '/api/tasks',
+      inventory: '/api/inventory',
+      finance: '/api/finance',
+      harvest: '/api/harvest',
+      contact: '/api/contact',
     },
   });
 });
@@ -36,6 +48,10 @@ app.get('/', (req, res) => {
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/finance', financeRoutes);
+app.use('/api/harvest', harvestRoutes);
+app.use('/api/contact', contactRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: `Route not found: ${req.originalUrl}` });
@@ -48,6 +64,10 @@ const startServer = async () => {
     await connectDB();
     await seedUsers();
     await seedTasks();
+    await seedInventory();
+    await seedFinance();
+    await seedHarvest();
+    await seedContact();
 
     const server = app.listen(PORT, () => {
       console.log(`GardenSphere API listening on port ${PORT}`);

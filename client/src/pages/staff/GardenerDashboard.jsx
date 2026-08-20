@@ -51,11 +51,10 @@ const GardenerDashboard = () => {
         },
         {
           title: 'Harvest',
-          description: 'Save harvest quantity, grade, date, and bed location.',
+          description: 'Save harvest quantity, grade, date, location, and selling price.',
           to: '/staff/record-harvest',
           icon: Wheat,
           tint: 'bg-amber-100 text-amber-700',
-          comingSoon: true,
         },
       ]}
     />

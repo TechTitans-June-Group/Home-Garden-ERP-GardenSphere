@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Minus, Plus } from 'lucide-react';
+import { ArrowLeft, Heart, Minus, Plus } from 'lucide-react';
 import ProductCard from '../components/ProductCard.jsx';
 import { products } from '../data/mockData.js';
 import { formatDate, formatPrice } from '../utils/format.js';
+import { useCustomer } from '../context/CustomerContext.jsx';
 
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user, isWishlisted, toggleWishlist } = useCustomer();
   const product = products.find((item) => item.id === Number(id));
   const [qty, setQty] = useState(1);
+  const liked = product ? isWishlisted?.(product.id) : false;
 
   if (!product) {
     return <p className="p-10 text-center">Product not found.</p>;
@@ -61,6 +64,22 @@ const ProductDetails = () => {
             >
               Place Order
             </Link>
+            <button
+              type="button"
+              onClick={() => {
+                if (!user) {
+                  navigate('/login');
+                  return;
+                }
+                toggleWishlist(product.id);
+              }}
+              className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold ${
+                liked ? 'bg-rose-500 text-white' : 'border border-rose-200 bg-white text-rose-600'
+              }`}
+            >
+              <Heart size={16} fill={liked ? 'currentColor' : 'none'} />
+              {liked ? 'Saved' : 'Save favourite'}
+            </button>
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { products } from '../data/mockData.js';
 import { useCustomer } from '../context/CustomerContext.jsx';
 import { formatPrice } from '../utils/format.js';
+import { DELIVERY_SLOTS, tomorrowIso } from '../utils/checkout.js';
 
 const PlaceOrder = () => {
   const { id } = useParams();
@@ -16,29 +17,43 @@ const PlaceOrder = () => {
     phone: user?.phone || '',
     address: user?.address || '',
     notes: '',
+    deliveryDate: tomorrowIso(),
+    deliverySlot: 'morning',
   });
   const [success, setSuccess] = useState(null);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   if (!product) return <p className="p-10 text-center">Product not found.</p>;
 
   const total = qty * product.price;
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    const order = placeOrder({
-      productId: product.id,
-      productName: product.name,
-      image: product.image,
-      quantity: qty,
-      unit: product.unit,
-      unitPrice: product.price,
-      total,
-      notes: form.notes,
-      customerName: form.customerName,
-      phone: form.phone,
-      address: form.address,
-    });
-    setSuccess(order);
+    setError('');
+    setSaving(true);
+    try {
+      const order = await placeOrder({
+        productId: product.id,
+        productName: product.name,
+        image: product.image,
+        quantity: qty,
+        unit: product.unit,
+        unitPrice: product.price,
+        total,
+        notes: form.notes,
+        deliveryDate: form.deliveryDate,
+        deliverySlot: form.deliverySlot,
+        customerName: form.customerName,
+        phone: form.phone,
+        address: form.address,
+      });
+      setSuccess(order);
+    } catch (err) {
+      setError(err.message || 'Could not place this order. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (success) {
@@ -99,12 +114,41 @@ const PlaceOrder = () => {
           Address
           <textarea className="input-field mt-1" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} required />
         </label>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm font-medium">
+            Delivery date
+            <input
+              type="date"
+              min={tomorrowIso()}
+              className="input-field mt-1"
+              value={form.deliveryDate}
+              onChange={(e) => setForm({ ...form, deliveryDate: e.target.value })}
+              required
+            />
+          </label>
+          <label className="block text-sm font-medium">
+            Time slot
+            <select
+              className="input-field mt-1"
+              value={form.deliverySlot}
+              onChange={(e) => setForm({ ...form, deliverySlot: e.target.value })}
+              required
+            >
+              {DELIVERY_SLOTS.map((slot) => (
+                <option key={slot.id} value={slot.id}>
+                  {slot.label} · {slot.time}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         <label className="mt-4 block text-sm font-medium">
           Order notes
           <textarea className="input-field mt-1" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </label>
-        <button type="submit" className="btn-primary mt-6 w-full">
-          Place Order
+        {error && <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        <button type="submit" className="btn-primary mt-6 w-full" disabled={saving}>
+          {saving ? 'Placing order...' : 'Place Order'}
         </button>
       </form>
     </div>

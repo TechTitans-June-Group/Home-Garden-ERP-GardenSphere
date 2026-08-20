@@ -14,6 +14,8 @@ import Feedback from './pages/Feedback.jsx';
 import Contact from './pages/Contact.jsx';
 import GardenInfo from './pages/GardenInfo.jsx';
 import GardenDesign from './pages/GardenDesign.jsx';
+import GardenShare from './pages/GardenShare.jsx';
+import Wishlist from './pages/Wishlist.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
@@ -34,11 +36,20 @@ const App = () => {
         <Route path="/shop" element={<Shop />} />
         <Route path="/shop/:id" element={<ProductDetails />} />
         <Route path="/garden" element={<GardenInfo />} />
+        <Route path="/garden-share" element={<GardenShare />} />
         <Route
           path="/garden-design"
           element={
             <ProtectedRoute>
               <GardenDesign />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wishlist"
+          element={
+            <ProtectedRoute>
+              <Wishlist />
             </ProtectedRoute>
           }
         />

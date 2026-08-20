@@ -2,24 +2,49 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   initialActivity,
   initialCrops,
-  initialExpenses,
   initialFertilizers,
-  initialHarvests,
-  initialIncome,
-  initialInventory,
   initialIrrigation,
   initialMaintenance,
   initialPests,
-  initialPurchases,
-  initialSales,
-  initialStock,
-  initialSuppliers,
   initialTasks,
   ROLE_LABELS,
   ROLE_PERMISSIONS,
   staffAccounts,
 } from '../data/staffData.js';
 import { NEXT_TASK_STATUS, normalizeTask } from '../utils/tasks.js';
+import { isInventoryLow } from '../utils/inventory.js';
+import api from '../services/api.js';
+import {
+  adjustInventoryStock,
+  createInventoryItem,
+  deleteInventoryItem,
+  deleteInventoryPurchase,
+  deleteInventorySupplier,
+  fetchInventory,
+  moveInventoryStock,
+  saveInventoryPurchase,
+  saveInventorySupplier,
+  updateInventoryItem,
+} from '../services/inventoryService.js';
+import {
+  deleteFinanceCategory,
+  deleteFinanceExpense,
+  deleteFinanceIncome,
+  fetchFinance,
+  saveFinanceCategory,
+  saveFinanceExpense,
+  saveFinanceIncome,
+} from '../services/financeService.js';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, PAYMENT_METHODS } from '../utils/finance.js';
+import {
+  deleteHarvestRecord,
+  deleteHarvestSale,
+  fetchHarvestDesk,
+  linkHarvestToSale,
+  saveHarvestRecord,
+  saveHarvestSale,
+} from '../services/harvestService.js';
+import { HARVEST_CROPS, HARVEST_GRADES, HARVEST_SALE_STATUSES, HARVEST_UNITS } from '../utils/harvest.js';
 
 const KEYS = {
   session: 'gs_staff_session',
@@ -31,15 +56,16 @@ const KEYS = {
   fertilizers: 'gs_staff_fertilizers',
   pests: 'gs_staff_pests',
   tasks: 'gs_staff_tasks_v2',
-  harvests: 'gs_staff_harvests_v2',
-  sales: 'gs_staff_sales',
-  inventory: 'gs_staff_inventory',
-  suppliers: 'gs_staff_suppliers',
-  purchases: 'gs_staff_purchases',
-  stock: 'gs_staff_stock',
+  harvests: 'gs_staff_harvests_db',
+  sales: 'gs_staff_sales_db',
+  inventory: 'gs_staff_inventory_db',
+  suppliers: 'gs_staff_suppliers_db',
+  purchases: 'gs_staff_purchases_db',
+  stock: 'gs_staff_stock_db',
   expenses: 'gs_staff_expenses_v2',
   income: 'gs_staff_income_v2',
   maintenance: 'gs_staff_maintenance',
+  notifications: 'gs_staff_notifications',
 };
 
 const readJson = (key, fallback) => {
@@ -81,23 +107,52 @@ export const StaffProvider = ({ children }) => {
   const fertilizers = useStore(KEYS.fertilizers, initialFertilizers);
   const pests = useStore(KEYS.pests, initialPests);
   const taskStore = useStore(KEYS.tasks, initialTasks, normalizeTask);
-  const harvests = useStore(KEYS.harvests, initialHarvests);
-  const sales = useStore(KEYS.sales, initialSales);
-  const inventory = useStore(KEYS.inventory, initialInventory);
-  const suppliers = useStore(KEYS.suppliers, initialSuppliers);
-  const purchases = useStore(KEYS.purchases, initialPurchases);
-  const stock = useStore(KEYS.stock, initialStock);
-  const expenses = useStore(KEYS.expenses, initialExpenses);
-  const income = useStore(KEYS.income, initialIncome);
+  const harvestStore = useStore(KEYS.harvests, []);
+  const saleStore = useStore(KEYS.sales, []);
+  const inventoryStore = useStore(KEYS.inventory, []);
+  const supplierStore = useStore(KEYS.suppliers, []);
+  const purchaseStore = useStore(KEYS.purchases, []);
+  const stockStore = useStore(KEYS.stock, []);
+  const expenseStore = useStore(KEYS.expenses, []);
+  const incomeStore = useStore(KEYS.income, []);
   const maintenance = useStore(KEYS.maintenance, initialMaintenance);
+  const [financeCategories, setFinanceCategories] = useState({
+    expense: EXPENSE_CATEGORIES,
+    income: INCOME_CATEGORIES,
+    payment: PAYMENT_METHODS,
+    all: [],
+  });
+  const [financeSummary, setFinanceSummary] = useState({
+    totalIncome: 0,
+    totalExpenses: 0,
+    netProfit: 0,
+    expenseCount: 0,
+    incomeCount: 0,
+  });
+  const [harvestCrops, setHarvestCrops] = useState(HARVEST_CROPS);
+  const [harvestUnits, setHarvestUnits] = useState(HARVEST_UNITS);
+  const [harvestGrades, setHarvestGrades] = useState(HARVEST_GRADES);
+  const [harvestSaleStatuses, setHarvestSaleStatuses] = useState(HARVEST_SALE_STATUSES);
+  const [harvestSummary, setHarvestSummary] = useState({
+    harvestCount: 0,
+    saleCount: 0,
+    totalQuantity: 0,
+    totalValue: 0,
+    soldValue: 0,
+    unsoldCount: 0,
+    listedCount: 0,
+    soldCount: 0,
+  });
   const [permissions, setPermissions] = useState(() => ({
     ...ROLE_PERMISSIONS,
     ...readJson(KEYS.permissions, {}),
   }));
   const [activity, setActivity] = useState(() => readJson(KEYS.activity, initialActivity));
+  const [notifications, setNotifications] = useState(() => readJson(KEYS.notifications, []));
 
   useEffect(() => localStorage.setItem(KEYS.permissions, JSON.stringify(permissions)), [permissions]);
   useEffect(() => localStorage.setItem(KEYS.activity, JSON.stringify(activity)), [activity]);
+  useEffect(() => localStorage.setItem(KEYS.notifications, JSON.stringify(notifications)), [notifications]);
 
   useEffect(() => {
     if (staff) localStorage.setItem(KEYS.session, JSON.stringify(staff));
@@ -119,13 +174,75 @@ export const StaffProvider = ({ children }) => {
     );
   };
 
-  const login = (email, password) => {
+  const pushBrowserAlert = (title, body) => {
+    if (typeof window === 'undefined' || typeof Notification === 'undefined') return;
+    const show = () => {
+      try {
+        new Notification(title, { body });
+      } catch {
+        /* browser may block */
+      }
+    };
+    if (Notification.permission === 'granted') show();
+    else if (Notification.permission === 'default') {
+      Notification.requestPermission().then((perm) => {
+        if (perm === 'granted') show();
+      });
+    }
+  };
+
+  const notifyLowStock = (items = []) => {
+    const alerts = items.filter(isInventoryLow);
+    if (!alerts.length) return;
+    setNotifications((prev) => {
+      const next = [...prev];
+      alerts.forEach((item) => {
+        const key = `low-${item.id}-${item.status}`;
+        if (next.some((row) => row.key === key)) return;
+        const title =
+          item.status === 'Out of Stock' ? `${item.item} is out of stock` : `${item.item} is low on stock`;
+        const description = `${item.stock} ${item.unit} left · minimum ${item.minStock}. Reorder from Purchases.`;
+        next.unshift({
+          id: key,
+          key,
+          type: 'low-stock',
+          title,
+          description,
+          time: new Date().toISOString(),
+          read: false,
+          to: '/staff/inventory',
+        });
+        pushBrowserAlert(title, description);
+      });
+      return next.slice(0, 80);
+    });
+  };
+
+  const markNotificationRead = (id) => {
+    setNotifications((prev) => prev.map((item) => (item.id === id ? { ...item, read: true } : item)));
+  };
+
+  const markAllNotificationsRead = () => {
+    setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+  };
+
+  const login = async (email, password) => {
     const found = users.items.find(
       (item) => item.email.toLowerCase() === email.toLowerCase() && item.password === password
     );
     if (!found || found.status === 'Inactive') {
       throw new Error('Invalid staff credentials or inactive account.');
     }
+
+    try {
+      const { data } = await api.post('/auth/login', { email, password });
+      localStorage.setItem('gs_token', data.token);
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.message || 'Cannot reach the GardenSphere server. Start the API, then log in again.'
+      );
+    }
+
     const withLogin = { ...found, lastLogin: new Date().toISOString() };
     users.save(withLogin);
     setStaff(withLogin);
@@ -388,6 +505,337 @@ export const StaffProvider = ({ children }) => {
     });
   };
 
+  const refreshInventory = async () => {
+    const data = await fetchInventory();
+    inventoryStore.setItems(data.items || []);
+    supplierStore.setItems(data.suppliers || []);
+    purchaseStore.setItems(data.purchases || []);
+    stockStore.setItems(data.stock || []);
+    notifyLowStock(data.items || []);
+    return data;
+  };
+
+  const refreshFinance = async () => {
+    const data = await fetchFinance();
+    expenseStore.setItems(data.expenses || []);
+    incomeStore.setItems(data.income || []);
+    setFinanceCategories(
+      data.categories || {
+        expense: EXPENSE_CATEGORIES,
+        income: INCOME_CATEGORIES,
+        payment: PAYMENT_METHODS,
+        all: [],
+      }
+    );
+    setFinanceSummary(
+      data.summary || {
+        totalIncome: 0,
+        totalExpenses: 0,
+        netProfit: 0,
+        expenseCount: 0,
+        incomeCount: 0,
+      }
+    );
+    return data;
+  };
+
+  const saveExpense = async (payload) => {
+    const saved = await saveFinanceExpense(payload);
+    await refreshFinance();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated expense' : 'Recorded expense',
+      detail: `${saved.category} · ${saved.description}`,
+    });
+    return saved;
+  };
+
+  const removeExpense = async (id) => {
+    const current = expenseStore.items.find((item) => item.id === id);
+    await deleteFinanceExpense(id);
+    await refreshFinance();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Removed expense',
+      detail: current?.description || 'An expense was removed.',
+    });
+  };
+
+  const saveIncome = async (payload) => {
+    const saved = await saveFinanceIncome(payload);
+    await refreshFinance();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated income' : 'Recorded income',
+      detail: `${saved.category} · ${saved.description}`,
+    });
+    return saved;
+  };
+
+  const removeIncome = async (id) => {
+    const current = incomeStore.items.find((item) => item.id === id);
+    await deleteFinanceIncome(id);
+    await refreshFinance();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Removed income',
+      detail: current?.description || 'An income record was removed.',
+    });
+  };
+
+  const addFinanceCategory = async (payload) => {
+    const saved = await saveFinanceCategory(payload);
+    await refreshFinance();
+    return saved;
+  };
+
+  const removeFinanceCategory = async (id) => {
+    await deleteFinanceCategory(id);
+    await refreshFinance();
+  };
+
+  const refreshHarvests = async () => {
+    const data = await fetchHarvestDesk();
+    harvestStore.setItems(data.harvests || []);
+    saleStore.setItems(data.sales || []);
+    setHarvestCrops(data.crops?.length ? data.crops : HARVEST_CROPS);
+    setHarvestUnits(data.units?.length ? data.units : HARVEST_UNITS);
+    setHarvestGrades(data.grades?.length ? data.grades : HARVEST_GRADES);
+    setHarvestSaleStatuses(data.saleStatuses?.length ? data.saleStatuses : HARVEST_SALE_STATUSES);
+    setHarvestSummary(
+      data.summary || {
+        harvestCount: 0,
+        saleCount: 0,
+        totalQuantity: 0,
+        totalValue: 0,
+        soldValue: 0,
+        unsoldCount: 0,
+        listedCount: 0,
+        soldCount: 0,
+      }
+    );
+    return data;
+  };
+
+  const saveHarvest = async (payload) => {
+    const saved = await saveHarvestRecord(payload);
+    await refreshHarvests();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated harvest' : 'Recorded harvest',
+      detail: `${saved.crop} · ${saved.quantity} ${saved.unit} · ${saved.grade}`,
+    });
+    return saved;
+  };
+
+  const removeHarvest = async (id) => {
+    const current = harvestStore.items.find((item) => item.id === id);
+    await deleteHarvestRecord(id);
+    await refreshHarvests();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Removed harvest',
+      detail: current ? `${current.crop} · ${current.date}` : 'A harvest record was removed.',
+    });
+  };
+
+  const linkSale = async (harvestId, payload) => {
+    const saved = await linkHarvestToSale(harvestId, payload);
+    await refreshHarvests();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Linked harvest to sale',
+      detail: `${saved.sale?.crop || saved.harvest?.crop} · ${saved.sale?.customer || 'customer'}`,
+    });
+    return saved;
+  };
+
+  const updateSale = async (payload) => {
+    const saved = await saveHarvestSale(payload);
+    await refreshHarvests();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Updated harvest sale',
+      detail: `${saved.sale?.crop} · ${saved.sale?.status}`,
+    });
+    return saved;
+  };
+
+  const unlinkSale = async (id) => {
+    const current = saleStore.items.find((item) => item.id === id);
+    await deleteHarvestSale(id);
+    await refreshHarvests();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Unlinked harvest sale',
+      detail: current ? `${current.crop} · ${current.customer}` : 'A harvest sale was unlinked.',
+    });
+  };
+
+  useEffect(() => {
+    if (!staff || !localStorage.getItem('gs_token')) return undefined;
+    refreshInventory().catch(() => {});
+    refreshFinance().catch(() => {});
+    refreshHarvests().catch(() => {});
+    return undefined;
+  }, [staff]);
+
+  const saveInventoryItem = async (payload) => {
+    const saved = payload.id
+      ? await updateInventoryItem(payload.id, payload)
+      : await createInventoryItem(payload);
+    await refreshInventory();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated inventory' : 'Added inventory',
+      detail: `${saved.item} · ${saved.stock} ${saved.unit}`,
+    });
+    return saved;
+  };
+
+  const removeInventoryItem = async (id) => {
+    const current = inventoryStore.items.find((item) => item.id === id);
+    await deleteInventoryItem(id);
+    await refreshInventory();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Removed inventory',
+      detail: current?.item || 'An inventory item was removed.',
+    });
+  };
+
+  const moveStock = async (payload) => {
+    const item = await moveInventoryStock(payload);
+    await refreshInventory();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.type,
+      detail: `${item.item} · ${payload.quantity} ${item.unit}`,
+    });
+    return { item };
+  };
+
+  const adjustStock = async (itemId, quantity, note) => {
+    const item = await adjustInventoryStock({ itemId, quantity, note });
+    await refreshInventory();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Updated stock',
+      detail: `${item.item} · ${item.stock} ${item.unit}`,
+    });
+    return { item };
+  };
+
+  const saveSupplier = async (payload) => {
+    const saved = await saveInventorySupplier(payload);
+    await refreshInventory();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated supplier' : 'Added supplier',
+      detail: saved.name,
+    });
+    return saved;
+  };
+
+  const savePurchase = async (payload) => {
+    const saved = await saveInventoryPurchase(payload);
+    await refreshInventory();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated purchase' : 'Recorded purchase',
+      detail: `${saved.item} from ${saved.supplier} · ${saved.status}${saved.source === 'customer' ? ' (customer)' : ''}`,
+    });
+    return saved;
+  };
+
+  const removePurchase = async (id) => {
+    await deleteInventoryPurchase(id);
+    await refreshInventory();
+  };
+
+  const inventory = {
+    items: inventoryStore.items,
+    save: saveInventoryItem,
+    remove: removeInventoryItem,
+    moveStock,
+    adjustStock,
+    refresh: refreshInventory,
+  };
+
+  const suppliers = {
+    items: supplierStore.items,
+    save: saveSupplier,
+    remove: async (id) => {
+      await deleteInventorySupplier(id);
+      await refreshInventory();
+    },
+  };
+
+  const purchases = {
+    items: purchaseStore.items,
+    save: savePurchase,
+    remove: removePurchase,
+  };
+
+  const stock = {
+    items: stockStore.items,
+  };
+
+  const expenses = {
+    items: expenseStore.items,
+    save: saveExpense,
+    remove: removeExpense,
+  };
+
+  const income = {
+    items: incomeStore.items,
+    save: saveIncome,
+    remove: removeIncome,
+  };
+
+  const finance = {
+    categories: financeCategories,
+    summary: financeSummary,
+    refresh: refreshFinance,
+    saveCategory: addFinanceCategory,
+    removeCategory: removeFinanceCategory,
+  };
+
+  const harvests = {
+    items: harvestStore.items,
+    crops: harvestCrops,
+    units: harvestUnits,
+    grades: harvestGrades,
+    summary: harvestSummary,
+    save: saveHarvest,
+    remove: removeHarvest,
+    linkSale,
+    refresh: refreshHarvests,
+  };
+
+  const sales = {
+    items: saleStore.items,
+    statuses: harvestSaleStatuses,
+    save: updateSale,
+    remove: unlinkSale,
+    link: linkSale,
+  };
+
   const value = useMemo(
     () => ({
       staff,
@@ -401,6 +849,10 @@ export const StaffProvider = ({ children }) => {
       permissions,
       savePermissions,
       activity,
+      notifications,
+      unreadNotifications: notifications.filter((item) => !item.read).length,
+      markNotificationRead,
+      markAllNotificationsRead,
       crops,
       irrigation,
       fertilizers,
@@ -414,9 +866,10 @@ export const StaffProvider = ({ children }) => {
       stock,
       expenses,
       income,
+      finance,
       maintenance,
     }),
-    [staff, users, permissions, activity, crops, irrigation, fertilizers, pests, tasks, harvests, sales, inventory, suppliers, purchases, stock, expenses, income, maintenance]
+    [staff, users, permissions, activity, notifications, crops, irrigation, fertilizers, pests, tasks, harvests, sales, inventory, suppliers, purchases, stock, expenses, income, finance, harvestSummary, maintenance]
   );
 
   return <StaffContext.Provider value={value}>{children}</StaffContext.Provider>;

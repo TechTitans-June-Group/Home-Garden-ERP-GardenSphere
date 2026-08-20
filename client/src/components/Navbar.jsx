@@ -8,6 +8,7 @@ const navItems = [
   { to: '/', label: 'Home' },
   { to: '/shop', label: 'Shop' },
   { to: '/orders', label: 'My Orders' },
+  { to: '/wishlist', label: 'Favourites' },
   { to: '/garden-design', label: 'Design Garden' },
   { to: '/garden', label: 'Garden Info' },
   { to: '/contact', label: 'Contact' },
@@ -125,6 +126,9 @@ const Navbar = () => {
                 <div className="absolute right-0 mt-3 w-48 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-card">
                   <Link to="/profile" onClick={() => setOpenProfile(false)} className="block px-4 py-3 text-sm hover:bg-gs-light">
                     Profile
+                  </Link>
+                  <Link to="/wishlist" onClick={() => setOpenProfile(false)} className="block px-4 py-3 text-sm hover:bg-gs-light">
+                    Favourites
                   </Link>
                   <Link to="/orders" onClick={() => setOpenProfile(false)} className="block px-4 py-3 text-sm hover:bg-gs-light">
                     My Orders

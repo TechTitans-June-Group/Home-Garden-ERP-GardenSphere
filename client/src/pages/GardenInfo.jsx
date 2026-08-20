@@ -9,6 +9,8 @@ const crops = [
   { name: 'Spinach', image: '/products/spinach.jpg' },
   { name: 'Strawberry', image: '/products/strawberry.jpg' },
   { name: 'Herbs', image: '/products/mint.jpg' },
+  { name: 'Marigold', image: '/products/marigold.jpg' },
+  { name: 'Hibiscus', image: '/products/hibiscus.jpg' },
 ];
 
 const GardenInfo = () => {
@@ -36,7 +38,7 @@ const GardenInfo = () => {
       <section className="bg-white py-12">
         <div className="mx-auto grid max-w-6xl gap-6 px-4 sm:grid-cols-2 lg:grid-cols-3 lg:px-6">
           {[
-            { icon: Leaf, title: 'Fresh Crops', text: 'Vegetables, fruits, and herbs grown in seasonal garden beds.' },
+            { icon: Leaf, title: 'Fresh Crops', text: 'Vegetables, fruits, herbs, and flowers grown in seasonal garden beds.' },
             { icon: Sun, title: 'Available Harvests', text: 'Customers see harvest dates and remaining quantities before ordering.' },
             { icon: Recycle, title: 'Sustainable Gardening', text: 'Compost, mulch, and water-wise irrigation keep the garden healthy.' },
             { icon: Shield, title: 'Natural Growing Practices', text: 'We prefer careful garden care over harsh chemical shortcuts.' },

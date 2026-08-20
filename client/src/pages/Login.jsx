@@ -17,7 +17,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     if (!form.email || !form.password) {
@@ -26,11 +26,15 @@ const Login = () => {
     }
 
     try {
-      staffLogin(form.email, form.password);
+      await staffLogin(form.email, form.password);
       navigate('/staff');
       return;
-    } catch {
-      // Not a staff account — try customer login next.
+    } catch (err) {
+      const message = err.message || '';
+      if (message.includes('server') || message.includes('authorized') || message.includes('deactivated')) {
+        setError(message);
+        return;
+      }
     }
 
     try {
