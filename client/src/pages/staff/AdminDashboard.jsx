@@ -81,7 +81,6 @@ const AdminDashboard = () => {
           to: '/staff/crops',
           icon: Sprout,
           tint: 'bg-emerald-100 text-emerald-700',
-          comingSoon: true,
         },
         {
           title: 'Irrigation control',
@@ -89,7 +88,6 @@ const AdminDashboard = () => {
           to: '/staff/irrigation',
           icon: Droplets,
           tint: 'bg-sky-100 text-sky-700',
-          comingSoon: true,
         },
         {
           title: 'Fertilizer records',
@@ -97,7 +95,6 @@ const AdminDashboard = () => {
           to: '/staff/fertilizers',
           icon: FlaskConical,
           tint: 'bg-lime-100 text-lime-700',
-          comingSoon: true,
         },
         {
           title: 'Pest & disease desk',
@@ -105,7 +102,6 @@ const AdminDashboard = () => {
           to: '/staff/pests',
           icon: Bug,
           tint: 'bg-orange-100 text-orange-700',
-          comingSoon: true,
         },
         {
           title: 'Task board',

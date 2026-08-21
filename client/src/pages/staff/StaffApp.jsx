@@ -11,6 +11,10 @@ import { InventoryPage, PurchasesPage, StockPage, SuppliersPage } from './Invent
 import { ExpensesPage, IncomePage } from './FinancePages.jsx';
 import { HarvestReportsPage, HarvestSalesPage, HarvestsPage, RecordHarvestPage } from './HarvestPages.jsx';
 import MessagesPage from './MessagesPage.jsx';
+import CropsPage from './CropsPages.jsx';
+import { IrrigationPage, RecordIrrigationPage } from './IrrigationPages.jsx';
+import FertilizersPage from './FertilizersPages.jsx';
+import { PestPage, ReportPestPage } from './PestPages.jsx';
 
 const StaffApp = () => {
   return (
@@ -29,10 +33,10 @@ const StaffApp = () => {
 
           <Route element={<StaffProtected roles={['admin', 'garden_manager']} />}>
             <Route path="messages" element={<MessagesPage />} />
-            <Route path="crops" element={<ComingSoon title="Crops" />} />
-            <Route path="irrigation" element={<ComingSoon title="Irrigation" />} />
-            <Route path="fertilizers" element={<ComingSoon title="Fertilizers" />} />
-            <Route path="pests" element={<ComingSoon title="Pests / Diseases" />} />
+            <Route path="crops" element={<CropsPage />} />
+            <Route path="irrigation" element={<IrrigationPage />} />
+            <Route path="fertilizers" element={<FertilizersPage />} />
+            <Route path="pests" element={<PestPage />} />
             <Route path="tasks" element={<TasksPage />} />
             <Route path="harvests" element={<HarvestsPage />} />
             <Route path="sales" element={<HarvestSalesPage />} />
@@ -45,9 +49,9 @@ const StaffApp = () => {
           </Route>
 
           <Route element={<StaffProtected roles={['admin', 'gardener']} />}>
-            <Route path="record-irrigation" element={<ComingSoon title="Irrigation" />} />
+            <Route path="record-irrigation" element={<RecordIrrigationPage />} />
             <Route path="maintenance" element={<ComingSoon title="Maintenance" />} />
-            <Route path="report-pest" element={<ComingSoon title="Pest Report" />} />
+            <Route path="report-pest" element={<ReportPestPage />} />
             <Route path="record-harvest" element={<RecordHarvestPage />} />
           </Route>
 
