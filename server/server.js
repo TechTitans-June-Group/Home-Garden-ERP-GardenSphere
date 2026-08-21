@@ -17,6 +17,8 @@ import seedContact from './utils/seedContact.js';
 import contactRoutes from './routes/contactRoutes.js';
 import seedCrops from './utils/seedCrops.js';
 import cropRoutes from './routes/cropRoutes.js';
+import seedIrrigation from './utils/seedIrrigation.js';
+import irrigationRoutes from './routes/irrigationRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -55,6 +57,7 @@ app.use('/api/finance', financeRoutes);
 app.use('/api/harvest', harvestRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/crops', cropRoutes);
+app.use('/api/irrigation', irrigationRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: `Route not found: ${req.originalUrl}` });
@@ -72,6 +75,7 @@ const startServer = async () => {
     await seedHarvest();
     await seedContact();
     await seedCrops();
+    await seedIrrigation();
 
     const server = app.listen(PORT, () => {
       console.log(`GardenSphere API listening on port ${PORT}`);

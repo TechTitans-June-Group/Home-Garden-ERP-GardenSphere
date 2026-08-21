@@ -56,6 +56,12 @@ import {
   saveLocation,
   deleteLocation,
 } from '../services/cropService.js';
+import {
+  fetchIrrigationDesk,
+  saveIrrigationSchedule,
+  deleteIrrigationSchedule,
+  recordWateringTask,
+} from '../services/irrigationService.js';
 
 const KEYS = {
   session: 'gs_staff_session',
@@ -117,7 +123,8 @@ export const StaffProvider = ({ children }) => {
   const [plantsItems, setPlantsItems] = useState([]);
   const [varietiesItems, setVarietiesItems] = useState([]);
   const [locationsItems, setLocationsItems] = useState([]);
-  const irrigation = useStore(KEYS.irrigation, initialIrrigation);
+  const [irrigationSchedules, setIrrigationSchedules] = useState([]);
+  const [irrigationRecords, setIrrigationRecords] = useState([]);
   const fertilizers = useStore(KEYS.fertilizers, initialFertilizers);
   const pests = useStore(KEYS.pests, initialPests);
   const taskStore = useStore(KEYS.tasks, initialTasks, normalizeTask);
@@ -796,12 +803,55 @@ export const StaffProvider = ({ children }) => {
     });
   };
 
+  const refreshIrrigation = async () => {
+    const data = await fetchIrrigationDesk();
+    setIrrigationSchedules(data.schedules || []);
+    setIrrigationRecords(data.records || []);
+    return data;
+  };
+
+  const saveSchedule = async (payload) => {
+    const saved = await saveIrrigationSchedule(payload);
+    await refreshIrrigation();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated irrigation schedule' : 'Created irrigation schedule',
+      detail: `${saved.crop} · ${saved.frequency} at ${saved.time}`,
+    });
+    return saved;
+  };
+
+  const removeSchedule = async (id) => {
+    await deleteIrrigationSchedule(id);
+    await refreshIrrigation();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Deleted irrigation schedule',
+      detail: 'An irrigation schedule was removed.',
+    });
+  };
+
+  const recordWateringExecution = async (payload) => {
+    const saved = await recordWateringTask(payload);
+    await refreshIrrigation();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Recorded watering',
+      detail: `${saved.crop} watered with ${saved.quantity} at ${saved.time}`,
+    });
+    return saved;
+  };
+
   useEffect(() => {
     if (!staff || !localStorage.getItem('gs_token')) return undefined;
     refreshInventory().catch(() => {});
     refreshFinance().catch(() => {});
     refreshHarvests().catch(() => {});
     refreshCrops().catch(() => {});
+    refreshIrrigation().catch(() => {});
     return undefined;
   }, [staff]);
 
@@ -941,6 +991,15 @@ export const StaffProvider = ({ children }) => {
     items: locationsItems,
     save: saveLocationItem,
     remove: removeLocationItem,
+  };
+
+  const irrigation = {
+    items: irrigationSchedules,
+    records: irrigationRecords,
+    save: saveSchedule,
+    remove: removeSchedule,
+    recordWatering: recordWateringExecution,
+    refresh: refreshIrrigation,
   };
 
   const income = {
