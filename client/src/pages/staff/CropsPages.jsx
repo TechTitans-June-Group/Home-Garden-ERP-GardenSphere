@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Calendar,
-  Edit2,
   Layers,
   Leaf,
   MapPin,
   Plus,
   Search,
   Sprout,
-  Trash2,
   X,
 } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext.jsx';
@@ -527,22 +525,20 @@ const CropsPage = () => {
                     </td>
                     {isManager && (
                       <td className="px-5 py-3 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-3 text-xs font-semibold">
                           <button
                             type="button"
-                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50"
+                            className="text-gs-primary"
                             onClick={() => handleEditPlanting(item)}
-                            title="Edit Record"
                           >
-                            <Edit2 size={15} />
+                            Edit
                           </button>
                           <button
                             type="button"
-                            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50"
+                            className="text-red-600"
                             onClick={() => handleDeletePlanting(item.id)}
-                            title="Delete Record"
                           >
-                            <Trash2 size={15} />
+                            Delete
                           </button>
                         </div>
                       </td>
@@ -579,20 +575,20 @@ const CropsPage = () => {
                     <td className="px-5 py-3 text-slate-500">{item.description || '--'}</td>
                     {isManager && (
                       <td className="px-5 py-3 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-3 text-xs font-semibold">
                           <button
                             type="button"
-                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50"
+                            className="text-gs-primary"
                             onClick={() => handleEditPlant(item)}
                           >
-                            <Edit2 size={15} />
+                            Edit
                           </button>
                           <button
                             type="button"
-                            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50"
+                            className="text-red-600"
                             onClick={() => handleDeletePlant(item.id)}
                           >
-                            <Trash2 size={15} />
+                            Delete
                           </button>
                         </div>
                       </td>
@@ -629,20 +625,20 @@ const CropsPage = () => {
                     <td className="px-5 py-3 text-slate-500">{item.description || '--'}</td>
                     {isManager && (
                       <td className="px-5 py-3 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-3 text-xs font-semibold">
                           <button
                             type="button"
-                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50"
+                            className="text-gs-primary"
                             onClick={() => handleEditVariety(item)}
                           >
-                            <Edit2 size={15} />
+                            Edit
                           </button>
                           <button
                             type="button"
-                            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50"
+                            className="text-red-600"
                             onClick={() => handleDeleteVariety(item.id)}
                           >
-                            <Trash2 size={15} />
+                            Delete
                           </button>
                         </div>
                       </td>
@@ -677,20 +673,20 @@ const CropsPage = () => {
                     <td className="px-5 py-3 text-slate-500">{item.description || '--'}</td>
                     {isManager && (
                       <td className="px-5 py-3 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-3 text-xs font-semibold">
                           <button
                             type="button"
-                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50"
+                            className="text-gs-primary"
                             onClick={() => handleEditLocation(item)}
                           >
-                            <Edit2 size={15} />
+                            Edit
                           </button>
                           <button
                             type="button"
-                            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50"
+                            className="text-red-600"
                             onClick={() => handleDeleteLocation(item.id)}
                           >
-                            <Trash2 size={15} />
+                            Delete
                           </button>
                         </div>
                       </td>

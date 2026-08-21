@@ -3,13 +3,11 @@ import {
   Calendar,
   Check,
   Droplets,
-  Edit2,
   History,
   Info,
   Leaf,
   Plus,
   Search,
-  Trash2,
   X,
 } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext.jsx';
@@ -312,20 +310,20 @@ export const IrrigationPage = () => {
                     </td>
                     {isManager && (
                       <td className="px-5 py-3 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-3 text-xs font-semibold">
                           <button
                             type="button"
-                            className="p-1.5 rounded-lg text-sky-600 hover:bg-sky-50"
+                            className="text-gs-primary"
                             onClick={() => handleEditSchedule(item)}
                           >
-                            <Edit2 size={15} />
+                            Edit
                           </button>
                           <button
                             type="button"
-                            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50"
+                            className="text-red-600"
                             onClick={() => handleDeleteSchedule(item.id)}
                           >
-                            <Trash2 size={15} />
+                            Delete
                           </button>
                         </div>
                       </td>

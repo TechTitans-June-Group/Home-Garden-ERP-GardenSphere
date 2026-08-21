@@ -62,6 +62,13 @@ import {
   deleteIrrigationSchedule,
   recordWateringTask,
 } from '../services/irrigationService.js';
+import {
+  fetchFertilizersDesk,
+  saveFertilizerStock,
+  deleteFertilizerStock,
+  saveFertilizerApplication,
+  deleteFertilizerApplication,
+} from '../services/fertilizerService.js';
 
 const KEYS = {
   session: 'gs_staff_session',
@@ -125,7 +132,8 @@ export const StaffProvider = ({ children }) => {
   const [locationsItems, setLocationsItems] = useState([]);
   const [irrigationSchedules, setIrrigationSchedules] = useState([]);
   const [irrigationRecords, setIrrigationRecords] = useState([]);
-  const fertilizers = useStore(KEYS.fertilizers, initialFertilizers);
+  const [fertilizerStockItems, setFertilizerStockItems] = useState([]);
+  const [fertilizerApplicationItems, setFertilizerApplicationItems] = useState([]);
   const pests = useStore(KEYS.pests, initialPests);
   const taskStore = useStore(KEYS.tasks, initialTasks, normalizeTask);
   const harvestStore = useStore(KEYS.harvests, []);
@@ -845,6 +853,59 @@ export const StaffProvider = ({ children }) => {
     return saved;
   };
 
+  const refreshFertilizers = async () => {
+    const data = await fetchFertilizersDesk();
+    setFertilizerStockItems(data.fertilizers || []);
+    setFertilizerApplicationItems(data.applications || []);
+    return data;
+  };
+
+  const saveFertilizerStockItem = async (payload) => {
+    const saved = await saveFertilizerStock(payload);
+    await refreshFertilizers();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated fertilizer stock' : 'Added fertilizer stock',
+      detail: `${saved.name} · ${saved.stock} ${saved.unit}`,
+    });
+    return saved;
+  };
+
+  const removeFertilizerStockItem = async (id) => {
+    await deleteFertilizerStock(id);
+    await refreshFertilizers();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Deleted fertilizer stock',
+      detail: 'A fertilizer stock item was removed.',
+    });
+  };
+
+  const saveApplicationRecord = async (payload) => {
+    const saved = await saveFertilizerApplication(payload);
+    await refreshFertilizers();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated fertilizer application' : 'Recorded fertilizer application',
+      detail: `${saved.fertilizerName} · ${saved.quantity} ${saved.unit} applied to ${saved.crop}`,
+    });
+    return saved;
+  };
+
+  const removeApplicationRecord = async (id) => {
+    await deleteFertilizerApplication(id);
+    await refreshFertilizers();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Deleted fertilizer application',
+      detail: 'A fertilizer application record was removed.',
+    });
+  };
+
   useEffect(() => {
     if (!staff || !localStorage.getItem('gs_token')) return undefined;
     refreshInventory().catch(() => {});
@@ -852,6 +913,7 @@ export const StaffProvider = ({ children }) => {
     refreshHarvests().catch(() => {});
     refreshCrops().catch(() => {});
     refreshIrrigation().catch(() => {});
+    refreshFertilizers().catch(() => {});
     return undefined;
   }, [staff]);
 
@@ -1000,6 +1062,16 @@ export const StaffProvider = ({ children }) => {
     remove: removeSchedule,
     recordWatering: recordWateringExecution,
     refresh: refreshIrrigation,
+  };
+
+  const fertilizers = {
+    items: fertilizerApplicationItems,
+    stock: fertilizerStockItems,
+    save: saveApplicationRecord,
+    remove: removeApplicationRecord,
+    saveStock: saveFertilizerStockItem,
+    removeStock: removeFertilizerStockItem,
+    refresh: refreshFertilizers,
   };
 
   const income = {

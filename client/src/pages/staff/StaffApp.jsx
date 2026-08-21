@@ -13,6 +13,7 @@ import { HarvestReportsPage, HarvestSalesPage, HarvestsPage, RecordHarvestPage }
 import MessagesPage from './MessagesPage.jsx';
 import CropsPage from './CropsPages.jsx';
 import { IrrigationPage, RecordIrrigationPage } from './IrrigationPages.jsx';
+import FertilizersPage from './FertilizersPages.jsx';
 
 const StaffApp = () => {
   return (
@@ -33,7 +34,7 @@ const StaffApp = () => {
             <Route path="messages" element={<MessagesPage />} />
             <Route path="crops" element={<CropsPage />} />
             <Route path="irrigation" element={<IrrigationPage />} />
-            <Route path="fertilizers" element={<ComingSoon title="Fertilizers" />} />
+            <Route path="fertilizers" element={<FertilizersPage />} />
             <Route path="pests" element={<ComingSoon title="Pests / Diseases" />} />
             <Route path="tasks" element={<TasksPage />} />
             <Route path="harvests" element={<HarvestsPage />} />
