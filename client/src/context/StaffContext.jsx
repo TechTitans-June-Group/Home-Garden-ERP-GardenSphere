@@ -45,6 +45,17 @@ import {
   saveHarvestSale,
 } from '../services/harvestService.js';
 import { HARVEST_CROPS, HARVEST_GRADES, HARVEST_SALE_STATUSES, HARVEST_UNITS } from '../utils/harvest.js';
+import {
+  fetchCrops,
+  savePlanting,
+  deletePlanting,
+  savePlant,
+  deletePlant,
+  saveVariety,
+  deleteVariety,
+  saveLocation,
+  deleteLocation,
+} from '../services/cropService.js';
 
 const KEYS = {
   session: 'gs_staff_session',
@@ -102,7 +113,10 @@ const StaffContext = createContext(null);
 export const StaffProvider = ({ children }) => {
   const [staff, setStaff] = useState(() => readJson(KEYS.session, null));
   const users = useStore(KEYS.users, staffAccounts);
-  const crops = useStore(KEYS.crops, initialCrops);
+  const [cropsItems, setCropsItems] = useState([]);
+  const [plantsItems, setPlantsItems] = useState([]);
+  const [varietiesItems, setVarietiesItems] = useState([]);
+  const [locationsItems, setLocationsItems] = useState([]);
   const irrigation = useStore(KEYS.irrigation, initialIrrigation);
   const fertilizers = useStore(KEYS.fertilizers, initialFertilizers);
   const pests = useStore(KEYS.pests, initialPests);
@@ -681,11 +695,113 @@ export const StaffProvider = ({ children }) => {
     });
   };
 
+  const refreshCrops = async () => {
+    const data = await fetchCrops();
+    setCropsItems(data.plantings || []);
+    setPlantsItems(data.plants || []);
+    setVarietiesItems(data.varieties || []);
+    setLocationsItems(data.locations || []);
+    return data;
+  };
+
+  const saveCropPlanting = async (payload) => {
+    const saved = await savePlanting(payload);
+    await refreshCrops();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated crop planting' : 'Recorded planting',
+      detail: `${saved.name} · ${saved.quantity} plants at ${saved.location}`,
+    });
+    return saved;
+  };
+
+  const removeCropPlanting = async (id) => {
+    await deletePlanting(id);
+    await refreshCrops();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Removed planting',
+      detail: 'A crop planting record was removed.',
+    });
+  };
+
+  const savePlantType = async (payload) => {
+    const saved = await savePlant(payload);
+    await refreshCrops();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated plant type' : 'Added plant type',
+      detail: saved.name,
+    });
+    return saved;
+  };
+
+  const removePlantType = async (id) => {
+    await deletePlant(id);
+    await refreshCrops();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Removed plant type',
+      detail: 'A plant type was removed.',
+    });
+  };
+
+  const saveVarietyType = async (payload) => {
+    const saved = await saveVariety(payload);
+    await refreshCrops();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated variety' : 'Added variety',
+      detail: `${saved.plantName} · ${saved.name}`,
+    });
+    return saved;
+  };
+
+  const removeVarietyType = async (id) => {
+    await deleteVariety(id);
+    await refreshCrops();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Removed variety',
+      detail: 'A variety was removed.',
+    });
+  };
+
+  const saveLocationItem = async (payload) => {
+    const saved = await saveLocation(payload);
+    await refreshCrops();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated garden location' : 'Added garden location',
+      detail: saved.name,
+    });
+    return saved;
+  };
+
+  const removeLocationItem = async (id) => {
+    await deleteLocation(id);
+    await refreshCrops();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Removed location',
+      detail: 'A garden location was removed.',
+    });
+  };
+
   useEffect(() => {
     if (!staff || !localStorage.getItem('gs_token')) return undefined;
     refreshInventory().catch(() => {});
     refreshFinance().catch(() => {});
     refreshHarvests().catch(() => {});
+    refreshCrops().catch(() => {});
     return undefined;
   }, [staff]);
 
@@ -802,6 +918,31 @@ export const StaffProvider = ({ children }) => {
     remove: removeExpense,
   };
 
+  const crops = {
+    items: cropsItems,
+    save: saveCropPlanting,
+    remove: removeCropPlanting,
+    refresh: refreshCrops,
+  };
+
+  const plants = {
+    items: plantsItems,
+    save: savePlantType,
+    remove: removePlantType,
+  };
+
+  const varieties = {
+    items: varietiesItems,
+    save: saveVarietyType,
+    remove: removeVarietyType,
+  };
+
+  const locations = {
+    items: locationsItems,
+    save: saveLocationItem,
+    remove: removeLocationItem,
+  };
+
   const income = {
     items: incomeStore.items,
     save: saveIncome,
@@ -854,6 +995,9 @@ export const StaffProvider = ({ children }) => {
       markNotificationRead,
       markAllNotificationsRead,
       crops,
+      plants,
+      varieties,
+      locations,
       irrigation,
       fertilizers,
       pests,
@@ -869,7 +1013,7 @@ export const StaffProvider = ({ children }) => {
       finance,
       maintenance,
     }),
-    [staff, users, permissions, activity, notifications, crops, irrigation, fertilizers, pests, tasks, harvests, sales, inventory, suppliers, purchases, stock, expenses, income, finance, harvestSummary, maintenance]
+    [staff, users, permissions, activity, notifications, crops, plants, varieties, locations, irrigation, fertilizers, pests, tasks, harvests, sales, inventory, suppliers, purchases, stock, expenses, income, finance, harvestSummary, maintenance]
   );
 
   return <StaffContext.Provider value={value}>{children}</StaffContext.Provider>;

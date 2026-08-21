@@ -11,6 +11,7 @@ import { InventoryPage, PurchasesPage, StockPage, SuppliersPage } from './Invent
 import { ExpensesPage, IncomePage } from './FinancePages.jsx';
 import { HarvestReportsPage, HarvestSalesPage, HarvestsPage, RecordHarvestPage } from './HarvestPages.jsx';
 import MessagesPage from './MessagesPage.jsx';
+import CropsPage from './CropsPages.jsx';
 
 const StaffApp = () => {
   return (
@@ -29,7 +30,7 @@ const StaffApp = () => {
 
           <Route element={<StaffProtected roles={['admin', 'garden_manager']} />}>
             <Route path="messages" element={<MessagesPage />} />
-            <Route path="crops" element={<ComingSoon title="Crops" />} />
+            <Route path="crops" element={<CropsPage />} />
             <Route path="irrigation" element={<ComingSoon title="Irrigation" />} />
             <Route path="fertilizers" element={<ComingSoon title="Fertilizers" />} />
             <Route path="pests" element={<ComingSoon title="Pests / Diseases" />} />
