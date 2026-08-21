@@ -31,7 +31,6 @@ const GardenerDashboard = () => {
           to: '/staff/record-irrigation',
           icon: Droplets,
           tint: 'bg-sky-100 text-sky-700',
-          comingSoon: true,
         },
         {
           title: 'Maintenance',
@@ -47,7 +46,6 @@ const GardenerDashboard = () => {
           to: '/staff/report-pest',
           icon: Bug,
           tint: 'bg-orange-100 text-orange-700',
-          comingSoon: true,
         },
         {
           title: 'Harvest',

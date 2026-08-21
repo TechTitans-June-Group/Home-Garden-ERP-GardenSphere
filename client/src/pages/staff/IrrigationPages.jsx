@@ -363,7 +363,7 @@ export const IrrigationPage = () => {
                     <td className="px-5 py-3 text-slate-700">{item.time}</td>
                     <td className="px-5 py-3 font-medium text-sky-800">{item.quantity}</td>
                     <td className="px-5 py-3">
-                      <span className="inline-flex rounded-full bg-emerald-55 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                      <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
                         {item.status}
                       </span>
                     </td>
@@ -577,7 +577,7 @@ export const RecordIrrigationPage = () => {
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {dueSchedules.length === 0 ? (
-            <div className="col-span-full rounded-2xl bg-sky-50 border border-sky-100 p-6 text-center text-sky-850">
+            <div className="col-span-full rounded-2xl bg-sky-50 border border-sky-100 p-6 text-center text-sky-800">
               <Leaf className="mx-auto text-sky-400 mb-2" size={32} />
               <p className="font-semibold text-slate-800">All caught up!</p>
               <p className="text-sm text-slate-500 mt-1">No irrigation schedules are currently flagged as Due.</p>
@@ -623,7 +623,7 @@ export const RecordIrrigationPage = () => {
 
       {/* Other Schedules section */}
       <div className="pt-4">
-        <h2 className="text-lg font-bold text-slate-850">Other Irrigation Schedules</h2>
+        <h2 className="text-lg font-bold text-slate-800">Other Irrigation Schedules</h2>
         <div className="mt-3 overflow-hidden rounded-[20px] bg-white border border-slate-100 shadow-[0_4px_25px_rgba(0,0,0,0.02)]">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-100">

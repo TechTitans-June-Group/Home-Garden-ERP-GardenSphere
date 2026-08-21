@@ -279,7 +279,7 @@ export const FertilizersPage = () => {
                 type="button"
                 className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
                   active
-                    ? 'bg-teal-850 text-white shadow-sm'
+                    ? 'bg-teal-800 text-white shadow-sm'
                     : 'text-slate-500 hover:bg-teal-50/50 hover:text-teal-800'
                 }`}
                 onClick={() => {

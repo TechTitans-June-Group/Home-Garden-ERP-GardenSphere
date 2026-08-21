@@ -5,7 +5,6 @@ import {
   initialFertilizers,
   initialIrrigation,
   initialMaintenance,
-  initialPests,
   initialTasks,
   ROLE_LABELS,
   ROLE_PERMISSIONS,
@@ -69,6 +68,11 @@ import {
   saveFertilizerApplication,
   deleteFertilizerApplication,
 } from '../services/fertilizerService.js';
+import {
+  fetchPests,
+  savePestRecord,
+  deletePestRecord,
+} from '../services/pestService.js';
 
 const KEYS = {
   session: 'gs_staff_session',
@@ -134,7 +138,7 @@ export const StaffProvider = ({ children }) => {
   const [irrigationRecords, setIrrigationRecords] = useState([]);
   const [fertilizerStockItems, setFertilizerStockItems] = useState([]);
   const [fertilizerApplicationItems, setFertilizerApplicationItems] = useState([]);
-  const pests = useStore(KEYS.pests, initialPests);
+  const [pestItems, setPestItems] = useState([]);
   const taskStore = useStore(KEYS.tasks, initialTasks, normalizeTask);
   const harvestStore = useStore(KEYS.harvests, []);
   const saleStore = useStore(KEYS.sales, []);
@@ -906,6 +910,35 @@ export const StaffProvider = ({ children }) => {
     });
   };
 
+  const refreshPests = async () => {
+    const data = await fetchPests();
+    setPestItems(data.records || []);
+    return data;
+  };
+
+  const savePestItem = async (payload) => {
+    const saved = await savePestRecord(payload);
+    await refreshPests();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated pest/disease record' : 'Reported pest/disease',
+      detail: `${saved.issue} on ${saved.crop} · ${saved.severity} severity`,
+    });
+    return saved;
+  };
+
+  const removePestItem = async (id) => {
+    await deletePestRecord(id);
+    await refreshPests();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Deleted pest/disease record',
+      detail: 'A pest/disease record was removed.',
+    });
+  };
+
   useEffect(() => {
     if (!staff || !localStorage.getItem('gs_token')) return undefined;
     refreshInventory().catch(() => {});
@@ -914,6 +947,7 @@ export const StaffProvider = ({ children }) => {
     refreshCrops().catch(() => {});
     refreshIrrigation().catch(() => {});
     refreshFertilizers().catch(() => {});
+    refreshPests().catch(() => {});
     return undefined;
   }, [staff]);
 
@@ -1062,6 +1096,13 @@ export const StaffProvider = ({ children }) => {
     remove: removeSchedule,
     recordWatering: recordWateringExecution,
     refresh: refreshIrrigation,
+  };
+
+  const pests = {
+    items: pestItems,
+    save: savePestItem,
+    remove: removePestItem,
+    refresh: refreshPests,
   };
 
   const fertilizers = {

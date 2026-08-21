@@ -23,10 +23,10 @@ const ManagerDashboard = () => {
       ]}
       modules={[
         { title: 'Messages', description: 'Read contact form inquiries and reply to customers.', to: '/staff/messages', icon: Mail, tint: 'bg-lime-100 text-lime-700' },
-        { title: 'Crop management', description: 'Track varieties, planting dates, locations, and growth stages.', to: '/staff/crops', icon: Sprout, tint: 'bg-emerald-100 text-emerald-700', comingSoon: true },
-        { title: 'Irrigation control', description: 'Schedules, watering quantity, and completed watering logs.', to: '/staff/irrigation', icon: Droplets, tint: 'bg-sky-100 text-sky-700', comingSoon: true },
-        { title: 'Fertilizer records', description: 'Applications, crop assignments, quantities, and costs.', to: '/staff/fertilizers', icon: FlaskConical, tint: 'bg-lime-100 text-lime-700', comingSoon: true },
-        { title: 'Pest & disease desk', description: 'Severity, treatments, and follow-up status for crop health.', to: '/staff/pests', icon: Bug, tint: 'bg-orange-100 text-orange-700', comingSoon: true },
+        { title: 'Crop management', description: 'Track varieties, planting dates, locations, and growth stages.', to: '/staff/crops', icon: Sprout, tint: 'bg-emerald-100 text-emerald-700' },
+        { title: 'Irrigation control', description: 'Schedules, watering quantity, and completed watering logs.', to: '/staff/irrigation', icon: Droplets, tint: 'bg-sky-100 text-sky-700' },
+        { title: 'Fertilizer records', description: 'Applications, crop assignments, quantities, and costs.', to: '/staff/fertilizers', icon: FlaskConical, tint: 'bg-lime-100 text-lime-700' },
+        { title: 'Pest & disease desk', description: 'Severity, treatments, and follow-up status for crop health.', to: '/staff/pests', icon: Bug, tint: 'bg-orange-100 text-orange-700' },
         { title: 'Task board', description: `${tasks.items.filter((item) => item.status !== 'Completed').length} open garden tasks to assign or complete.`, to: '/staff/tasks', icon: ClipboardList, tint: 'bg-amber-100 text-amber-700' },
         { title: 'Harvest records', description: 'Quantities, grades, harvest dates, locations, and selling price.', to: '/staff/harvests', icon: Wheat, tint: 'bg-yellow-100 text-yellow-800' },
         { title: 'Sales desk', description: 'Link harvested lots to customer sales from pending to completed.', to: '/staff/sales', icon: ShoppingCart, tint: 'bg-rose-100 text-rose-700' },
