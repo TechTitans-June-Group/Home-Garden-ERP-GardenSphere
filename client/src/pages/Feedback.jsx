@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCustomer } from '../context/CustomerContext.jsx';
+import { toast } from '../context/ToastContext.jsx';
 import FeedbackModal from '../components/FeedbackModal.jsx';
 import StarRating from '../components/StarRating.jsx';
 import { formatDate } from '../utils/format.js';
@@ -44,6 +45,7 @@ const Feedback = () => {
           submitFeedback(selected.id, rating, comment);
           setSelected(null);
           setMessage('Feedback submitted. Thank you!');
+          toast.success('Feedback submitted', 'Thank you for rating your harvest.');
         }}
       />
     </div>

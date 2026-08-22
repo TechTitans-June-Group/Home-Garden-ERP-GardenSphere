@@ -2,19 +2,37 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Bell, Leaf, LogOut, Menu, RefreshCw, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useStaff } from '../context/StaffContext.jsx';
-import { ROLE_LABELS } from '../data/staffData.js';
+import { ROLE_LABELS, canAccessPath } from '../data/staffData.js';
 import { pageTitles, staffMenus } from '../data/staffNav.js';
 import { formatDateTime } from '../utils/format.js';
 
 const StaffLayout = () => {
-  const { staff, logout, notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead } = useStaff();
+  const { staff, logout, notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead, permissions } = useStaff();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const mainRef = useRef(null);
   const notesRef = useRef(null);
-  const groups = staffMenus[staff.role] || [];
+  const roleGroups = (staffMenus[staff.role] || [])
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.end || canAccessPath(permissions, staff.role, item.to)),
+    }))
+    .filter((group) => group.items.length);
+  const knownPaths = new Set(roleGroups.flatMap((group) => group.items.map((item) => item.to)));
+  const extras = Object.values(staffMenus)
+    .flatMap((groups) => groups.flatMap((group) => group.items.map((item) => ({ ...item, group: group.group }))))
+    .filter(
+      (item, index, rows) =>
+        !item.end &&
+        !knownPaths.has(item.to) &&
+        canAccessPath(permissions, staff.role, item.to) &&
+        rows.findIndex((row) => row.to === item.to) === index
+    );
+  const groups = extras.length
+    ? [...roleGroups, { group: 'EXTRA ACCESS', items: extras }]
+    : roleGroups;
   const title = pageTitles[location.pathname] || 'Overview';
 
   useEffect(() => {

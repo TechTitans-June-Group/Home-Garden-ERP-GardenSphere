@@ -1,5 +1,6 @@
 import Fertilizer from '../models/Fertilizer.js';
 import FertilizerApplication from '../models/FertilizerApplication.js';
+import { upsertExpense } from '../utils/linkFinance.js';
 
 const fail = (message, statusCode = 400) => {
   const error = new Error(message);
@@ -165,6 +166,20 @@ export const createApplication = async (req, res, next) => {
       recordedBy: req.user?._id,
       recordedByName: req.user?.name || 'System',
     });
+
+    if ((status || 'Scheduled') === 'Applied' && Number(app.cost) > 0) {
+      await upsertExpense({
+        source: 'fertilizer',
+        sourceId: app._id,
+        category: 'Fertilizers',
+        description: `${fertilizer.name} on ${crop}`,
+        date: app.date,
+        amount: app.cost,
+        method: 'Cash',
+        notes: 'Auto-logged from fertilizer application',
+        createdBy: req.user?._id,
+      });
+    }
 
     const populated = await FertilizerApplication.findById(app._id).populate('fertilizer');
     res.status(201).json({ application: formatApplication(populated) });

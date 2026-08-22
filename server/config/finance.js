@@ -23,7 +23,7 @@ export const PAYMENT_METHODS = ['Cash', 'Bank', 'Card', 'Online', 'Cheque'];
 
 export const CATEGORY_KINDS = ['expense', 'income', 'payment'];
 
-export const FINANCE_ROLES = ['admin', 'finance_manager'];
+export const FINANCE_ROLES = ['admin', 'finance_manager', 'garden_manager'];
 
 export const toAmount = (value) => {
   const amount = Number(String(value ?? '').replace(/[^\d.-]/g, ''));

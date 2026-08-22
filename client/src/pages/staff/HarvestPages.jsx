@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { BarChart, PieChart as GardenPie } from '../../components/staff/GardenCharts.jsx';
 import { useStaff } from '../../context/StaffContext.jsx';
+import { toast } from '../../context/ToastContext.jsx';
 import { formatDate, formatPrice } from '../../utils/format.js';
 import { downloadCsv, toNumber } from '../../utils/reports.js';
 import {
@@ -271,6 +272,7 @@ const HarvestDesk = ({ mode = 'manage' }) => {
   }, []);
 
   const flash = (message) => {
+    toast.success(message);
     setNotice(message);
     setTimeout(() => setNotice(''), 2200);
   };
@@ -574,6 +576,7 @@ export const HarvestSalesPage = () => {
   }, []);
 
   const flash = (message) => {
+    toast.success(message);
     setNotice(message);
     setTimeout(() => setNotice(''), 2200);
   };
@@ -590,10 +593,10 @@ export const HarvestSalesPage = () => {
     try {
       if (form.id) {
         await sales.save(form);
-        flash('Sale updated');
+        flash('Sale updated. Customer My Orders synced.');
       } else {
         await sales.link(saleHarvest.id, form);
-        flash('Harvest linked to sales');
+        flash('Harvest linked. Customer My Orders synced.');
       }
       setForm(null);
       setSaleHarvest(null);

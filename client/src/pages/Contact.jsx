@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Clock, Mail, MapPin, Phone } from 'lucide-react';
 import { useCustomer } from '../context/CustomerContext.jsx';
+import { toast } from '../context/ToastContext.jsx';
 import { fetchMyContactMessages, sendContactMessage } from '../services/contactService.js';
 import { formatDateTime } from '../utils/format.js';
 
@@ -62,10 +63,12 @@ const Contact = () => {
     try {
       await sendContactMessage(form);
       setSent(true);
+      toast.success('Message sent', 'The garden team will reply on this page.');
       await loadThreads(form.email);
       setForm((prev) => ({ ...prev, message: '' }));
     } catch (err) {
       setError(err.message);
+      toast.error('Could not send message', err.message);
     } finally {
       setBusy(false);
     }

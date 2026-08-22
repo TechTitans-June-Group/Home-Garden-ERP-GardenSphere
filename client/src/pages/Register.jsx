@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useCustomer } from '../context/CustomerContext.jsx';
+import { toast } from '../context/ToastContext.jsx';
 
 const Register = () => {
   const { register } = useCustomer();
@@ -19,7 +20,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     if (!form.name || !form.email || !form.phone || !form.address || !form.password) {
@@ -36,10 +37,12 @@ const Register = () => {
     }
     try {
       const { confirmPassword, remember, ...payload } = form;
-      register(payload, remember);
+      await register(payload, remember);
+      toast.success('Account created', 'Welcome to GardenSphere.');
       navigate(location.state?.from || '/');
     } catch (err) {
       setError(err.message);
+      toast.error('Could not create account', err.message);
     }
   };
 

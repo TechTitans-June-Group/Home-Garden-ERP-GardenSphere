@@ -69,6 +69,7 @@ export const staffMenus = {
         { to: '/staff/purchases', label: 'Purchases', icon: Package },
         { to: '/staff/suppliers', label: 'Suppliers', icon: Truck },
         { to: '/staff/stock', label: 'Stock Moves', icon: ClipboardList },
+        { to: '/staff/inventory-reports', label: 'Inventory Reports', icon: PieChart },
       ],
     },
     {
@@ -109,6 +110,10 @@ export const staffMenus = {
       ],
     },
     {
+      group: 'FIELD WORK',
+      items: [{ to: '/staff/maintenance', label: 'Maintenance', icon: Leaf }],
+    },
+    {
       group: 'OPERATIONS',
       items: [
         { to: '/staff/tasks', label: 'Tasks', icon: ClipboardList },
@@ -116,6 +121,14 @@ export const staffMenus = {
         { to: '/staff/sales', label: 'Sales', icon: ShoppingCart },
         { to: '/staff/harvest-reports', label: 'Harvest Reports', icon: PieChart },
         { to: '/staff/manager-reports', label: 'Reports', icon: PieChart },
+      ],
+    },
+    {
+      group: 'FINANCE',
+      items: [
+        { to: '/staff/expenses', label: 'Expenses', icon: Wallet },
+        { to: '/staff/income', label: 'Income', icon: BadgeDollarSign },
+        { to: '/staff/finance-reports', label: 'Reports', icon: PieChart },
       ],
     },
   ],
@@ -128,6 +141,7 @@ export const staffMenus = {
       group: 'FIELD WORK',
       items: [
         { to: '/staff/my-tasks', label: 'My Tasks', icon: ClipboardList },
+        { to: '/staff/crops', label: 'Crops', icon: Sprout },
         { to: '/staff/record-irrigation', label: 'Irrigation', icon: Droplets },
         { to: '/staff/maintenance', label: 'Maintenance', icon: Leaf },
         { to: '/staff/report-pest', label: 'Pest Report', icon: Bug },

@@ -116,7 +116,6 @@ const AdminDashboard = () => {
           to: '/staff/maintenance',
           icon: Leaf,
           tint: 'bg-lime-100 text-lime-700',
-          comingSoon: true,
         },
         {
           title: 'Harvest records',
@@ -141,7 +140,7 @@ const AdminDashboard = () => {
         },
         {
           title: 'Purchases',
-          description: 'Record supplier purchases and receiving status.',
+          description: 'Supplier restocks and customer shop orders, including harvest-linked sales.',
           to: '/staff/purchases',
           icon: Package,
           tint: 'bg-amber-100 text-amber-700',

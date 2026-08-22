@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Leaf } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext.jsx';
+import { toast } from '../../context/ToastContext.jsx';
 import { ROLE_LABELS, staffAccounts } from '../../data/staffData.js';
 
 const StaffLogin = () => {
@@ -15,10 +16,13 @@ const StaffLogin = () => {
     event.preventDefault();
     setError('');
     try {
-      await login(form.email, form.password);
+      const session = await login(form.email, form.password);
+      const role = ROLE_LABELS[session.role] || 'Staff';
+      toast.success(`Welcome to ${role} Dashboard`, `Hi ${session.name.split(' ')[0]}, you are signed in.`);
       navigate('/staff');
     } catch (err) {
       setError(err.message);
+      toast.error('Could not sign in', err.message);
     }
   };
 

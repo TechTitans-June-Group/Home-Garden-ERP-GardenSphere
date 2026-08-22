@@ -2,7 +2,12 @@ import InventoryItem from '../models/InventoryItem.js';
 import Supplier from '../models/Supplier.js';
 import Purchase from '../models/Purchase.js';
 import StockMovement from '../models/StockMovement.js';
+import HarvestSale from '../models/HarvestSale.js';
+import User from '../models/User.js';
 import { CUSTOMER_PURCHASE_STATUSES, STOCK_TYPES, computeItemStatus, toQty } from '../config/inventory.js';
+import { upsertIncome } from '../utils/linkFinance.js';
+import { cropsMatch, formatSaleAsCustomerOrder, upsertHarvestSaleFromPurchase } from '../utils/linkCustomerOrder.js';
+import { ROLES } from '../config/roles.js';
 
 const fail = (message, statusCode = 400) => {
   const error = new Error(message);
@@ -358,6 +363,19 @@ export const createCustomerPurchase = async (req, res, next) => {
       status: 'Pending',
     });
 
+    await upsertIncome({
+      source: 'shop-order',
+      sourceId: purchase.orderRef || purchase._id,
+      category: 'Vegetable sales',
+      description: `${productName} order ${purchase.orderRef || ''}`.trim(),
+      date: purchase.date,
+      amount: quantity * unitCost,
+      method: 'Online',
+      notes: `Shop order for ${customerName}`,
+    });
+
+    await upsertHarvestSaleFromPurchase(purchase);
+
     res.status(201).json({ purchase: formatPurchase(purchase) });
   } catch (error) {
     next(error);
@@ -380,6 +398,7 @@ export const cancelCustomerPurchase = async (req, res, next) => {
 
     purchase.status = 'Cancelled';
     await purchase.save();
+    await upsertHarvestSaleFromPurchase(purchase);
     res.json({ purchase: formatPurchase(purchase) });
   } catch (error) {
     next(error);
@@ -391,11 +410,42 @@ export const listCustomerOrders = async (req, res, next) => {
     const email = String(req.query.email || '').trim().toLowerCase();
     if (!email) throw fail('Email is required.');
     const escaped = email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const purchases = await Purchase.find({
-      source: 'customer',
-      customerEmail: { $regex: `^${escaped}$`, $options: 'i' },
-    }).sort({ date: -1, createdAt: -1 });
-    res.json({ orders: purchases.map(formatCustomerOrder) });
+    const account = await User.findOne({ email, role: ROLES.USER });
+    const name = account?.name || '';
+    const purchaseQuery = [{ customerEmail: { $regex: `^${escaped}$`, $options: 'i' } }];
+    if (name) purchaseQuery.push({ customerName: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } });
+
+    const [purchases, sales] = await Promise.all([
+      Purchase.find({ source: 'customer', $or: purchaseQuery }).sort({ date: -1, createdAt: -1 }),
+      HarvestSale.find({
+        $or: [
+          { customerEmail: { $regex: `^${escaped}$`, $options: 'i' } },
+          ...(name ? [{ customer: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } }] : []),
+        ],
+      }).sort({ date: -1, createdAt: -1 }),
+    ]);
+
+    const orders = purchases.map(formatCustomerOrder);
+    sales.forEach((sale) => {
+      const match = orders.find(
+        (order) =>
+          (sale.orderRef && order.id === sale.orderRef) ||
+          cropsMatch(order.productName, sale.crop)
+      );
+      if (match) {
+        match.status = sale.status || match.status;
+        match.quantity = sale.quantity || match.quantity;
+        match.unit = sale.unit || match.unit;
+        match.unitPrice = sale.unitPrice || match.unitPrice;
+        match.total = sale.amount || match.total;
+        match.productName = match.productName || sale.crop;
+      } else {
+        orders.push(formatSaleAsCustomerOrder(sale));
+      }
+    });
+
+    orders.sort((a, b) => new Date(b.orderDate || 0) - new Date(a.orderDate || 0));
+    res.json({ orders });
   } catch (error) {
     next(error);
   }
@@ -487,6 +537,7 @@ export const updatePurchase = async (req, res, next) => {
       purchase.status = nextStatus;
       if (payload.notes !== undefined) purchase.notes = String(payload.notes || '').trim();
       await purchase.save();
+      await upsertHarvestSaleFromPurchase(purchase);
       return res.json({ purchase: formatPurchase(purchase) });
     }
 
@@ -549,6 +600,11 @@ export const deletePurchase = async (req, res, next) => {
           user: req.user,
         });
       }
+    }
+
+    if (purchase.source === 'customer') {
+      purchase.status = 'Cancelled';
+      await upsertHarvestSaleFromPurchase(purchase);
     }
 
     await purchase.deleteOne();

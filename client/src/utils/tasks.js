@@ -55,7 +55,35 @@ export const isTaskOverdue = (task) => {
 export const isTaskManager = (role) => ['admin', 'garden_manager'].includes(role);
 
 export const isAssignedTo = (task, staff) =>
-  Boolean(staff) && (task.assigneeId === staff.id || task.assignee === staff.name);
+  Boolean(staff) && (String(task.assigneeId) === String(staff.id) || task.assignee === staff.name);
+
+export const fromApiTask = (task = {}) =>
+  normalizeTask({
+    id: String(task.id || ''),
+    title: task.title,
+    description: task.description,
+    assigneeId: task.assignedTo?.id ? String(task.assignedTo.id) : task.assigneeId || '',
+    assignee: task.assignedTo?.name || task.assignee || '',
+    priority: task.priority,
+    due: task.dueDate || task.due || '',
+    status: task.status,
+    comments: (task.comments || []).map((entry) => ({
+      id: String(entry.id),
+      text: entry.text,
+      authorId: entry.author?.id || entry.authorId,
+      authorName: entry.author?.name || entry.authorName || 'Staff',
+      createdAt: entry.createdAt,
+    })),
+    history: (task.history || []).map((entry) => ({
+      id: String(entry.id),
+      action: entry.action,
+      detail: entry.detail,
+      actorName: entry.actorName,
+      at: entry.createdAt || entry.at,
+    })),
+    completedAt: task.completedAt || null,
+    createdAt: task.createdAt || '',
+  });
 
 export const dueTone = (task) => {
   if (!task?.due || task.status === 'Completed') return 'normal';

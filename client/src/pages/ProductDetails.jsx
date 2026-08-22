@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Heart, Minus, Plus } from 'lucide-react';
 import ProductCard from '../components/ProductCard.jsx';
-import { products } from '../data/mockData.js';
+import { products as fallbackProducts } from '../data/mockData.js';
 import { formatDate, formatPrice } from '../utils/format.js';
 import { useCustomer } from '../context/CustomerContext.jsx';
 
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, isWishlisted, toggleWishlist } = useCustomer();
-  const product = products.find((item) => item.id === Number(id));
+  const { user, isWishlisted, toggleWishlist, products: liveProducts } = useCustomer();
+  const products = liveProducts?.length ? liveProducts : fallbackProducts;
+  const product = products.find((item) => String(item.id) === String(id));
   const [qty, setQty] = useState(1);
   const liked = product ? isWishlisted?.(product.id) : false;
 

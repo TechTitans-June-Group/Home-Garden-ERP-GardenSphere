@@ -7,6 +7,20 @@ import {
 } from '../data/mockData.js';
 import { cancelCustomerPurchase, fetchCustomerOrders, recordCustomerPurchase, saveCustomerOrderFeedback } from '../services/inventoryService.js';
 import { plotPlantId } from '../utils/gardenGuide.js';
+import { fetchShopProducts } from '../services/shopService.js';
+import {
+  deleteGardenDesignRecord,
+  fetchCustomerNotifications,
+  fetchGardenDesigns,
+  fetchWishlist,
+  loginAccount,
+  markCustomerNotifications,
+  postCustomerNotification,
+  registerCustomer,
+  saveGardenDesignRecord,
+  saveWishlistIds,
+  updateMyProfile,
+} from '../services/customerService.js';
 
 const STORAGE = {
   user: 'gs_customer_user',
@@ -41,6 +55,7 @@ export const CustomerProvider = ({ children }) => {
   );
   const [designs, setDesigns] = useState(() => readJson(STORAGE.designs, []));
   const [wishlistMap, setWishlistMap] = useState(() => readJson(STORAGE.wishlist, {}));
+  const [catalog, setCatalog] = useState(products);
 
   useEffect(() => localStorage.setItem(STORAGE.users, JSON.stringify(users)), [users]);
   useEffect(() => {
@@ -66,18 +81,23 @@ export const CustomerProvider = ({ children }) => {
   }, [designs]);
   useEffect(() => localStorage.setItem(STORAGE.wishlist, JSON.stringify(wishlistMap)), [wishlistMap]);
 
+  useEffect(() => {
+    fetchShopProducts().then(setCatalog).catch(() => {});
+  }, []);
+
   const addNotification = (payload) => {
     setNotifications((prev) => {
       if (payload.key && prev.some((item) => item.key === payload.key)) return prev;
-      return [
-        {
-          id: payload.id || `n-${Date.now()}`,
-          read: false,
-          time: new Date().toISOString(),
-          ...payload,
-        },
-        ...prev,
-      ];
+      const next = {
+        id: payload.id || `n-${Date.now()}`,
+        read: false,
+        time: new Date().toISOString(),
+        ...payload,
+      };
+      if (user && localStorage.getItem('gs_token')) {
+        postCustomerNotification({ key: next.key, type: next.type, title: next.title, description: next.description });
+      }
+      return [next, ...prev];
     });
   };
 
@@ -143,6 +163,11 @@ export const CustomerProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    if (user && localStorage.getItem('gs_token')) hydrateCustomer(user);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  useEffect(() => {
     if (!user?.email) return undefined;
     refreshOrders(user);
     const timer = setInterval(() => refreshOrders(user), 8000);
@@ -150,44 +175,51 @@ export const CustomerProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email]);
 
-  const register = (payload, remember = true) => {
-    const exists = users.some((item) => item.email.toLowerCase() === payload.email.toLowerCase());
-    if (exists) {
-      throw new Error('An account with this email already exists.');
+  const hydrateCustomer = async (nextUser) => {
+    try {
+      const [wish, remoteDesigns, notes] = await Promise.all([
+        fetchWishlist(),
+        fetchGardenDesigns(),
+        fetchCustomerNotifications(),
+      ]);
+      if (wish.length) setWishlistMap((prev) => ({ ...prev, [nextUser.email]: wish }));
+      if (remoteDesigns.length) setDesigns(remoteDesigns);
+      if (notes.length) setNotifications(notes);
+    } catch {
+      /* keep cached copies */
     }
-
-    const newUser = {
-      id: `cust-${Date.now()}`,
-      ...payload,
-    };
-
-    setUsers((prev) => [...prev, newUser]);
-    if (remember) setUser(newUser);
-    else setUser(newUser);
-    return newUser;
   };
 
-  const login = (email, password, remember) => {
-    const found = users.find(
-      (item) => item.email.toLowerCase() === email.toLowerCase() && item.password === password
-    );
-    if (!found) {
-      throw new Error('Invalid email or password.');
+  const register = async (payload, remember = true) => {
+    const { token, user: next } = await registerCustomer(payload);
+    localStorage.setItem('gs_token', token);
+    setUser(next);
+    setUsers((prev) => [...prev.filter((item) => item.email !== next.email), next]);
+    if (remember) localStorage.setItem(STORAGE.remember, next.email);
+    return next;
+  };
+
+  const login = async (email, password, remember) => {
+    const { token, user: next } = await loginAccount(email, password);
+    if (next.role && next.role !== 'user') {
+      throw new Error('Use the staff portal for this account.');
     }
-    setUser(found);
+    localStorage.setItem('gs_token', token);
+    setUser(next);
     if (remember) localStorage.setItem(STORAGE.remember, email);
     else localStorage.removeItem(STORAGE.remember);
-    return found;
+    await hydrateCustomer(next);
+    return next;
   };
 
-  const logout = () => setUser(null);
+  const logout = () => {
+    setUser(null);
+  };
 
-  const updateProfile = (updates) => {
-    setUser((prev) => {
-      const next = { ...prev, ...updates };
-      setUsers((list) => list.map((item) => (item.id === next.id ? next : item)));
-      return next;
-    });
+  const updateProfile = async (updates) => {
+    const next = await updateMyProfile(updates);
+    setUser((prev) => ({ ...prev, ...next }));
+    return next;
   };
 
   const placeOrder = async (order) => {
@@ -268,10 +300,12 @@ export const CustomerProvider = ({ children }) => {
 
   const markRead = (id) => {
     setNotifications((prev) => prev.map((item) => (item.id === id ? { ...item, read: true } : item)));
+    markCustomerNotifications(id);
   };
 
   const markAllRead = () => {
     setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+    markCustomerNotifications();
   };
 
   const unreadCount = notifications.filter((item) => !item.read).length;
@@ -287,19 +321,23 @@ export const CustomerProvider = ({ children }) => {
     : [];
 
   const wishlistIds = user ? wishlistMap[user.email] || [] : [];
-  const wishlistProducts = products.filter((item) => wishlistIds.includes(item.id));
+  const wishlistProducts = catalog.filter((item) => wishlistIds.includes(item.id) || wishlistIds.includes(String(item.id)));
 
-  const toggleWishlist = (productId) => {
+  const toggleWishlist = async (productId) => {
     if (!user) {
       throw new Error('Please log in to save favourite harvests.');
     }
-    setWishlistMap((prev) => {
-      const current = prev[user.email] || [];
-      const next = current.includes(productId)
-        ? current.filter((id) => id !== productId)
-        : [productId, ...current];
-      return { ...prev, [user.email]: next };
-    });
+    const current = wishlistMap[user.email] || [];
+    const key = String(productId);
+    const next = current.map(String).includes(key)
+      ? current.filter((id) => String(id) !== key)
+      : [productId, ...current];
+    setWishlistMap((prev) => ({ ...prev, [user.email]: next }));
+    try {
+      await saveWishlistIds(next.map(String));
+    } catch {
+      /* keep local copy */
+    }
   };
 
   const isWishlisted = (productId) => wishlistIds.includes(productId);
@@ -311,12 +349,12 @@ export const CustomerProvider = ({ children }) => {
       .filter((design) => design.customerEmail === user.email)
       .forEach((design) => {
         (design.plots || []).forEach((plot) => {
-          const plant = products.find((item) => item.id === plotPlantId(plot));
+          const plant = catalog.find((item) => item.id === plotPlantId(plot) || String(item.id) === String(plotPlantId(plot)));
           if (plant) names.add(plant.name.toLowerCase());
         });
       });
     if (!names.size) return undefined;
-    products
+    catalog
       .filter((item) => item.available)
       .forEach((item) => {
         if (!names.has(item.name.toLowerCase())) return;
@@ -328,9 +366,9 @@ export const CustomerProvider = ({ children }) => {
         });
       });
     return undefined;
-  }, [user?.email, designs]);
+  }, [user?.email, designs, catalog]);
 
-  const saveGardenDesign = (design) => {
+  const saveGardenDesign = async (design) => {
     if (!user) {
       throw new Error('Please log in as a customer to save a garden design.');
     }
@@ -346,23 +384,35 @@ export const CustomerProvider = ({ children }) => {
       updatedAt: new Date().toISOString(),
     };
 
+    let saved = payload;
+    try {
+      saved = await saveGardenDesignRecord(payload);
+    } catch {
+      /* keep local copy */
+    }
+
     setDesigns((prev) => {
-      const exists = prev.some((item) => item.id === payload.id);
-      if (exists) return prev.map((item) => (item.id === payload.id ? payload : item));
-      return [payload, ...prev];
+      const exists = prev.some((item) => item.id === saved.id || item.id === payload.id);
+      if (exists) return prev.map((item) => (item.id === saved.id || item.id === payload.id ? saved : item));
+      return [saved, ...prev];
     });
 
     addNotification({
       type: 'garden',
       title: 'Garden design saved',
-      description: `${payload.name || 'Your garden'} was saved to your account.`,
+      description: `${saved.name || 'Your garden'} was saved to your account.`,
     });
 
-    return payload;
+    return saved;
   };
 
-  const deleteGardenDesign = (id) => {
+  const deleteGardenDesign = async (id) => {
     setDesigns((prev) => prev.filter((item) => item.id !== id));
+    try {
+      await deleteGardenDesignRecord(id);
+    } catch {
+      /* ignore */
+    }
   };
 
   const value = useMemo(
@@ -389,8 +439,9 @@ export const CustomerProvider = ({ children }) => {
       isWishlisted,
       markRead,
       markAllRead,
+      products: catalog,
     }),
-    [user, users, customerOrders, gardenDesigns, notifications, unreadCount, wishlistIds, wishlistProducts]
+    [user, users, customerOrders, gardenDesigns, notifications, unreadCount, wishlistIds, wishlistProducts, catalog]
   );
 
   return <CustomerContext.Provider value={value}>{children}</CustomerContext.Provider>;
