@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Filter, Search, X } from 'lucide-react';
 import ProductCard from '../components/ProductCard.jsx';
-import { products } from '../data/mockData.js';
+import { useCustomer } from '../context/CustomerContext.jsx';
+import { products as fallbackProducts } from '../data/mockData.js';
 
 const Shop = () => {
+  const { products: liveProducts } = useCustomer();
+  const products = liveProducts?.length ? liveProducts : fallbackProducts;
   const [params] = useSearchParams();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState(params.get('category') || 'All');

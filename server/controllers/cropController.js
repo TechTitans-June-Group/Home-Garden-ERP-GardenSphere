@@ -135,6 +135,18 @@ export const updatePlanting = async (req, res, next) => {
     const plantingObj = await Planting.findById(id);
     if (!plantingObj) throw fail('Planting record not found.', 404);
 
+    if (req.user?.role === 'gardener') {
+      if (stage) plantingObj.stage = stage;
+      if (status) plantingObj.status = status;
+      if (notes !== undefined) plantingObj.notes = notes;
+      await plantingObj.save();
+      const populated = await Planting.findById(plantingObj._id)
+        .populate('plant')
+        .populate('variety')
+        .populate('location');
+      return res.json({ planting: formatPlanting(populated) });
+    }
+
     if (plantId) {
       const plantExists = await Plant.findById(plantId);
       if (!plantExists) throw fail('Select a valid plant.');

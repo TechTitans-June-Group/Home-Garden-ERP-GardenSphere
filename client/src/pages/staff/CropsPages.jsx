@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext.jsx';
+import { toast } from '../../context/ToastContext.jsx';
 import { formatDate } from '../../utils/format.js';
 
 const Hero = ({ kicker, title, subtitle, icon: Icon, action }) => (
@@ -103,6 +104,7 @@ const CropsPage = () => {
   });
 
   const showNotice = (text) => {
+    toast.success(text);
     setNotice(text);
     setTimeout(() => setNotice(''), 3500);
   };
@@ -319,6 +321,7 @@ const CropsPage = () => {
   };
 
   const isManager = ['admin', 'garden_manager'].includes(staff?.role);
+  const canUpdateCrop = isManager || staff?.role === 'gardener';
 
   // Badge Style Helpers
   const getStageBadgeClass = (stage) => {
@@ -490,13 +493,13 @@ const CropsPage = () => {
                 <th className="px-5 py-3">Stage</th>
                 <th className="px-5 py-3">Status</th>
                 <th className="px-5 py-3">Expected Harvest</th>
-                {isManager && <th className="px-5 py-3 text-right">Actions</th>}
+                {canUpdateCrop && <th className="px-5 py-3 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-emerald-50">
               {filteredPlantings.length === 0 ? (
                 <tr>
-                  <td colSpan={isManager ? 8 : 7} className="px-5 py-8 text-center text-slate-500">
+                  <td colSpan={canUpdateCrop ? 8 : 7} className="px-5 py-8 text-center text-slate-500">
                     No planting records found. Click "Add" to record a new sowing/planting.
                   </td>
                 </tr>
@@ -523,7 +526,7 @@ const CropsPage = () => {
                     <td className="px-5 py-3 text-slate-500">
                       {item.expectedHarvestDate ? formatDate(item.expectedHarvestDate) : '--'}
                     </td>
-                    {isManager && (
+                    {canUpdateCrop && (
                       <td className="px-5 py-3 text-right">
                         <div className="flex justify-end gap-3 text-xs font-semibold">
                           <button
@@ -531,15 +534,17 @@ const CropsPage = () => {
                             className="text-gs-primary"
                             onClick={() => handleEditPlanting(item)}
                           >
-                            Edit
+                            Update
                           </button>
-                          <button
-                            type="button"
-                            className="text-red-600"
-                            onClick={() => handleDeletePlanting(item.id)}
-                          >
-                            Delete
-                          </button>
+                          {isManager && (
+                            <button
+                              type="button"
+                              className="text-red-600"
+                              onClick={() => handleDeletePlanting(item.id)}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}

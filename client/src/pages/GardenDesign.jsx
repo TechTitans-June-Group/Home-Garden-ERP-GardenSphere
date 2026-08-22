@@ -17,7 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCustomer } from '../context/CustomerContext.jsx';
-import { products } from '../data/mockData.js';
+import { products as fallbackProducts } from '../data/mockData.js';
 import { formatDate } from '../utils/format.js';
 import {
   GARDEN_LAYOUTS,
@@ -41,7 +41,6 @@ const CARE = {
 };
 
 const CATEGORY_ORDER = ['All', 'Vegetables', 'Fruits', 'Herbs', 'Flowers', 'Plants'];
-const plantable = products.filter((item) => item.available);
 const emptyPlots = (rows, cols) => Array.from({ length: rows * cols }, () => null);
 const imageCache = new Map();
 
@@ -68,10 +67,11 @@ const countBy = (items, pick) => {
   return Object.entries(map).sort((a, b) => b[1] - a[1]);
 };
 
-const plantFromPlot = (plot) => plantable.find((item) => item.id === plotPlantId(plot)) || null;
-
 const GardenDesign = () => {
-  const { user, gardenDesigns, saveGardenDesign, deleteGardenDesign } = useCustomer();
+  const { user, gardenDesigns, saveGardenDesign, deleteGardenDesign, products: liveProducts } = useCustomer();
+  const products = liveProducts?.length ? liveProducts : fallbackProducts;
+  const plantable = products.filter((item) => item.available);
+  const plantFromPlot = (plot) => plantable.find((item) => item.id === plotPlantId(plot) || String(item.id) === String(plotPlantId(plot))) || null;
   const [name, setName] = useState(`${user?.name?.split(' ')[0] || 'My'} Home Garden`);
   const [layoutId, setLayoutId] = useState('yard');
   const [plots, setPlots] = useState(() => emptyPlots(3, 4));
@@ -311,7 +311,7 @@ const GardenDesign = () => {
         photo = '';
       }
     }
-    const saved = saveGardenDesign({
+    const saved = await saveGardenDesign({
       id: activeId,
       name: name.trim() || 'My Home Garden',
       layoutId,

@@ -1,5 +1,7 @@
 import Harvest from '../models/Harvest.js';
 import HarvestSale from '../models/HarvestSale.js';
+import { removeLinkedIncome, upsertIncome } from '../utils/linkFinance.js';
+import { unlinkPurchaseFromHarvestSale, upsertPurchaseFromHarvestSale } from '../utils/linkCustomerOrder.js';
 import {
   HARVEST_CROPS,
   HARVEST_GRADES,
@@ -52,6 +54,8 @@ const formatSale = (doc) => ({
   harvestId: doc.harvestId ? String(doc.harvestId) : '',
   crop: doc.crop,
   customer: doc.customer,
+  customerEmail: doc.customerEmail || '',
+  orderRef: doc.orderRef || '',
   date: toDateString(doc.date),
   quantity: toQty(doc.quantity),
   unit: doc.unit,
@@ -116,6 +120,8 @@ const readSale = (payload, harvest) => {
   if (!HARVEST_SALE_STATUSES.includes(status)) throw fail('Select a valid sale status.');
   return {
     customer,
+    customerEmail: String(payload.customerEmail || '').trim().toLowerCase(),
+    orderRef: String(payload.orderRef || '').trim(),
     date: payload.date || harvest.date || new Date(),
     quantity,
     unit: String(payload.unit || harvest.unit || 'KG').trim(),
@@ -127,15 +133,32 @@ const readSale = (payload, harvest) => {
   };
 };
 
-const applySaleToHarvest = async (harvest, sale) => {
+const applySaleToHarvest = async (harvest, sale, userId) => {
   if (!sale || sale.status === 'Cancelled') {
     harvest.saleId = null;
     harvest.saleStatus = 'Unlinked';
+    if (sale?._id) await removeLinkedIncome('harvest-sale', sale._id);
   } else {
     harvest.saleId = sale._id;
     harvest.saleStatus = saleStatusFromHarvest(sale.status);
+    if (sale.status === 'Completed') {
+      await upsertIncome({
+        source: 'harvest-sale',
+        sourceId: sale._id,
+        category: 'Other harvest sales',
+        description: `${harvest.crop} sale to ${sale.customer}`,
+        date: sale.date,
+        amount: sale.amount || harvest.totalValue,
+        method: 'Cash',
+        notes: `Linked harvest sale ${sale._id}`,
+        createdBy: userId,
+      });
+    }
   }
   await harvest.save();
+  if (sale) {
+    await upsertPurchaseFromHarvestSale(sale, { userId });
+  }
 };
 
 export const getHarvestDesk = async (req, res, next) => {
@@ -223,7 +246,7 @@ export const linkHarvestSale = async (req, res, next) => {
       });
     }
 
-    await applySaleToHarvest(harvest, sale);
+    await applySaleToHarvest(harvest, sale, req.user._id);
     res.status(201).json({ harvest: formatHarvest(harvest), sale: formatSale(sale) });
   } catch (error) {
     next(error);
@@ -240,7 +263,7 @@ export const updateHarvestSale = async (req, res, next) => {
 
     Object.assign(sale, readSale({ ...formatSale(sale), ...(req.body || {}) }, harvest));
     await sale.save();
-    await applySaleToHarvest(harvest, sale);
+    await applySaleToHarvest(harvest, sale, req.user._id);
     res.json({ harvest: formatHarvest(harvest), sale: formatSale(sale) });
   } catch (error) {
     next(error);
@@ -253,7 +276,9 @@ export const deleteHarvestSale = async (req, res, next) => {
     const sale = await HarvestSale.findById(req.params.id);
     if (!sale) throw fail('Sale not found.', 404);
     const harvest = await Harvest.findById(sale.harvestId);
+    await unlinkPurchaseFromHarvestSale(sale);
     await HarvestSale.findByIdAndDelete(sale._id);
+    await removeLinkedIncome('harvest-sale', sale._id);
     if (harvest) {
       await applySaleToHarvest(harvest, null);
     }

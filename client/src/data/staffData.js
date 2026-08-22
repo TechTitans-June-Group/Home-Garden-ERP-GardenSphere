@@ -36,11 +36,13 @@ export const ALL_PERMISSIONS = [
   'Manage Expenses',
   'Manage Income',
   'View Financial Reports',
+  'Manage Messages',
 ];
 
 export const ROLE_PERMISSIONS = {
-  admin: ['Manage Users', 'Manage Roles', 'Manage Permissions', 'Reset Passwords', 'View User Activity', 'View System Reports', 'Full system access'],
+  admin: ['Manage Users', 'Manage Roles', 'Manage Permissions', 'Reset Passwords', 'View User Activity', 'View System Reports', 'Manage Messages', 'Full system access'],
   garden_manager: [
+    'Manage Messages',
     'Manage Crops',
     'Manage Irrigation',
     'Manage Fertilizers',
@@ -53,6 +55,9 @@ export const ROLE_PERMISSIONS = {
     'Manage Suppliers',
     'Manage Stock Transactions',
     'View Reports',
+    'Manage Expenses',
+    'Manage Income',
+    'View Financial Reports',
   ],
   gardener: [
     'View Tasks',
@@ -70,6 +75,57 @@ export const ROLE_PERMISSIONS = {
     'Manage Stock Transactions',
   ],
   finance_manager: ['Manage Expenses', 'Manage Income', 'View Financial Reports'],
+};
+
+export const ROUTE_PERMISSIONS = {
+  '/staff/users': 'Manage Users',
+  '/staff/roles': 'Manage Roles',
+  '/staff/activity': 'View User Activity',
+  '/staff/reports': 'View System Reports',
+  '/staff/messages': 'Manage Messages',
+  '/staff/crops': ['Manage Crops', 'Crop Updates'],
+  '/staff/irrigation': 'Manage Irrigation',
+  '/staff/fertilizers': 'Manage Fertilizers',
+  '/staff/pests': 'Manage Pests/Diseases',
+  '/staff/tasks': 'Manage Tasks',
+  '/staff/harvests': 'Manage Harvests',
+  '/staff/sales': 'Manage Sales',
+  '/staff/harvest-reports': 'View Reports',
+  '/staff/manager-reports': 'View Reports',
+  '/staff/my-tasks': ['View Tasks', 'Update Tasks'],
+  '/staff/record-irrigation': 'Record Irrigation',
+  '/staff/maintenance': ['Record Maintenance', 'Manage Crops'],
+  '/staff/report-pest': 'Report Pest/Disease',
+  '/staff/record-harvest': 'Record Harvest',
+  '/staff/inventory': 'Manage Inventory',
+  '/staff/purchases': 'Manage Purchases',
+  '/staff/suppliers': 'Manage Suppliers',
+  '/staff/stock': 'Manage Stock Transactions',
+  '/staff/inventory-reports': ['Manage Inventory', 'View Reports'],
+  '/staff/expenses': 'Manage Expenses',
+  '/staff/income': 'Manage Income',
+  '/staff/finance-reports': 'View Financial Reports',
+};
+
+export const LOCKED_PERMISSIONS = {
+  admin: ['Manage Permissions'],
+};
+
+export const hasPermission = (permissions, role, required) => {
+  if (!required) return true;
+  const list = permissions?.[role] || ROLE_PERMISSIONS[role] || [];
+  if (list.includes('Full system access')) return true;
+  const needed = Array.isArray(required) ? required : [required];
+  return needed.some((item) => list.includes(item));
+};
+
+export const canAccessPath = (permissions, role, path) => {
+  if (!path || path === '/staff' || path === '/staff/') return true;
+  const match = Object.keys(ROUTE_PERMISSIONS)
+    .sort((a, b) => b.length - a.length)
+    .find((route) => path === route || path.startsWith(`${route}/`));
+  if (!match) return true;
+  return hasPermission(permissions, role, ROUTE_PERMISSIONS[match]);
 };
 
 export const staffAccounts = [

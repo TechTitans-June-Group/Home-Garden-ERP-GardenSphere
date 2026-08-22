@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCustomer } from '../context/CustomerContext.jsx';
+import { toast } from '../context/ToastContext.jsx';
 
 const Profile = () => {
   const { user, updateProfile, logout } = useCustomer();
@@ -11,10 +12,15 @@ const Profile = () => {
   });
   const [saved, setSaved] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    updateProfile(form);
-    setSaved(true);
+    try {
+      await updateProfile(form);
+      setSaved(true);
+      toast.success('Profile updated', 'Your customer details were saved.');
+    } catch (err) {
+      toast.error('Could not update profile', err.message);
+    }
   };
 
   return (

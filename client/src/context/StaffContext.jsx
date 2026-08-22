@@ -4,13 +4,28 @@ import {
   initialCrops,
   initialFertilizers,
   initialIrrigation,
-  initialMaintenance,
   initialTasks,
   ROLE_LABELS,
   ROLE_PERMISSIONS,
   staffAccounts,
 } from '../data/staffData.js';
-import { NEXT_TASK_STATUS, normalizeTask } from '../utils/tasks.js';
+import { NEXT_TASK_STATUS, fromApiTask } from '../utils/tasks.js';
+import {
+  addTaskCommentRecord,
+  deleteTaskRecord,
+  fetchTaskAssignees,
+  fetchTasks,
+  saveTaskRecord,
+  updateTaskStatusRecord,
+} from '../services/taskService.js';
+import {
+  createStaffUser,
+  fetchStaffActivity,
+  fetchStaffUsers,
+  resetStaffUserPassword,
+  setStaffUserStatus,
+  updateStaffUser,
+} from '../services/userService.js';
 import { isInventoryLow } from '../utils/inventory.js';
 import api from '../services/api.js';
 import {
@@ -73,11 +88,17 @@ import {
   savePestRecord,
   deletePestRecord,
 } from '../services/pestService.js';
+import {
+  deleteMaintenanceRecord,
+  fetchMaintenanceDesk,
+  saveMaintenanceRecord,
+} from '../services/maintenanceService.js';
+import { MAINTENANCE_LOCATIONS, MAINTENANCE_STATUSES, MAINTENANCE_TYPES } from '../utils/maintenance.js';
 
 const KEYS = {
   session: 'gs_staff_session',
   users: 'gs_staff_users',
-  permissions: 'gs_staff_permissions',
+  permissions: 'gs_staff_permissions_v2',
   activity: 'gs_staff_activity',
   crops: 'gs_staff_crops',
   irrigation: 'gs_staff_irrigation',
@@ -92,7 +113,6 @@ const KEYS = {
   stock: 'gs_staff_stock_db',
   expenses: 'gs_staff_expenses_v2',
   income: 'gs_staff_income_v2',
-  maintenance: 'gs_staff_maintenance',
   notifications: 'gs_staff_notifications',
 };
 
@@ -129,7 +149,8 @@ const StaffContext = createContext(null);
 
 export const StaffProvider = ({ children }) => {
   const [staff, setStaff] = useState(() => readJson(KEYS.session, null));
-  const users = useStore(KEYS.users, staffAccounts);
+  const [userItems, setUserItems] = useState([]);
+  const [activity, setActivity] = useState([]);
   const [cropsItems, setCropsItems] = useState([]);
   const [plantsItems, setPlantsItems] = useState([]);
   const [varietiesItems, setVarietiesItems] = useState([]);
@@ -139,7 +160,7 @@ export const StaffProvider = ({ children }) => {
   const [fertilizerStockItems, setFertilizerStockItems] = useState([]);
   const [fertilizerApplicationItems, setFertilizerApplicationItems] = useState([]);
   const [pestItems, setPestItems] = useState([]);
-  const taskStore = useStore(KEYS.tasks, initialTasks, normalizeTask);
+  const [taskItems, setTaskItems] = useState([]);
   const harvestStore = useStore(KEYS.harvests, []);
   const saleStore = useStore(KEYS.sales, []);
   const inventoryStore = useStore(KEYS.inventory, []);
@@ -148,7 +169,16 @@ export const StaffProvider = ({ children }) => {
   const stockStore = useStore(KEYS.stock, []);
   const expenseStore = useStore(KEYS.expenses, []);
   const incomeStore = useStore(KEYS.income, []);
-  const maintenance = useStore(KEYS.maintenance, initialMaintenance);
+  const [maintenanceItems, setMaintenanceItems] = useState([]);
+  const [maintenanceTypes, setMaintenanceTypes] = useState(MAINTENANCE_TYPES);
+  const [maintenanceStatuses, setMaintenanceStatuses] = useState(MAINTENANCE_STATUSES);
+  const [maintenanceLocations, setMaintenanceLocations] = useState(MAINTENANCE_LOCATIONS);
+  const [maintenanceSummary, setMaintenanceSummary] = useState({
+    total: 0,
+    due: 0,
+    overdue: 0,
+    done: 0,
+  });
   const [financeCategories, setFinanceCategories] = useState({
     expense: EXPENSE_CATEGORIES,
     income: INCOME_CATEGORIES,
@@ -180,11 +210,9 @@ export const StaffProvider = ({ children }) => {
     ...ROLE_PERMISSIONS,
     ...readJson(KEYS.permissions, {}),
   }));
-  const [activity, setActivity] = useState(() => readJson(KEYS.activity, initialActivity));
   const [notifications, setNotifications] = useState(() => readJson(KEYS.notifications, []));
 
   useEffect(() => localStorage.setItem(KEYS.permissions, JSON.stringify(permissions)), [permissions]);
-  useEffect(() => localStorage.setItem(KEYS.activity, JSON.stringify(activity)), [activity]);
   useEffect(() => localStorage.setItem(KEYS.notifications, JSON.stringify(notifications)), [notifications]);
 
   useEffect(() => {
@@ -224,6 +252,34 @@ export const StaffProvider = ({ children }) => {
     }
   };
 
+  const notifyOverdueMaintenance = (summary = {}, records = []) => {
+    if (!summary.overdue) return;
+    const key = `maintenance-overdue-${summary.overdue}-${records
+      .filter((row) => row.overdue)
+      .map((row) => row.id)
+      .sort()
+      .join('-')}`;
+    setNotifications((prev) => {
+      if (prev.some((row) => row.key === key || (row.type === 'maintenance-overdue' && !row.read))) return prev;
+      const title = `${summary.overdue} garden care ${summary.overdue === 1 ? 'job is' : 'jobs are'} overdue`;
+      const description = 'Open Maintenance to mark weeding, mulching, or cleanup as done.';
+      pushBrowserAlert(title, description);
+      return [
+        {
+          id: key,
+          key,
+          type: 'maintenance-overdue',
+          title,
+          description,
+          time: new Date().toISOString(),
+          read: false,
+          to: '/staff/maintenance',
+        },
+        ...prev,
+      ].slice(0, 80);
+    });
+  };
+
   const notifyLowStock = (items = []) => {
     const alerts = items.filter(isInventoryLow);
     if (!alerts.length) return;
@@ -259,42 +315,66 @@ export const StaffProvider = ({ children }) => {
     setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
   };
 
-  const login = async (email, password) => {
-    const found = users.items.find(
-      (item) => item.email.toLowerCase() === email.toLowerCase() && item.password === password
-    );
-    if (!found || found.status === 'Inactive') {
-      throw new Error('Invalid staff credentials or inactive account.');
-    }
+  const toStaffSession = (user) => ({
+    id: String(user.id),
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    phone: user.phone || '',
+    status: user.isActive === false || user.status === 'Inactive' ? 'Inactive' : 'Active',
+    lastLogin: user.lastLogin || new Date().toISOString(),
+  });
 
+  const refreshUsers = async () => {
     try {
-      const { data } = await api.post('/auth/login', { email, password });
-      localStorage.setItem('gs_token', data.token);
+      const rows = await fetchStaffUsers();
+      setUserItems(rows);
+    } catch {
+      /* gardeners cannot list users */
+    }
+    if (staff?.role === 'admin') {
+      try {
+        setActivity(await fetchStaffActivity());
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  const refreshTasks = async () => {
+    const rows = await fetchTasks();
+    setTaskItems(rows.map(fromApiTask));
+    if (['admin', 'garden_manager'].includes(staff?.role)) {
+      try {
+        const assignees = await fetchTaskAssignees();
+        setUserItems((prev) => {
+          const extras = assignees.filter((row) => !prev.some((item) => String(item.id) === String(row.id)));
+          return extras.length ? [...prev, ...extras.map((row) => ({ ...row, status: 'Active' }))] : prev;
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+    return rows;
+  };
+
+  const login = async (email, password) => {
+    let data;
+    try {
+      const response = await api.post('/auth/login', { email, password });
+      data = response.data;
     } catch (error) {
       throw new Error(
         error.response?.data?.message || 'Cannot reach the GardenSphere server. Start the API, then log in again.'
       );
     }
-
-    const withLogin = { ...found, lastLogin: new Date().toISOString() };
-    users.save(withLogin);
-    setStaff(withLogin);
-    setActivity((prev) =>
-      [
-        {
-          id: `act-${Date.now()}`,
-          time: new Date().toISOString(),
-          actorId: found.id,
-          actorName: found.name,
-          userId: found.id,
-          userName: found.name,
-          action: 'Logged in',
-          detail: 'Signed in to the staff portal.',
-        },
-        ...prev,
-      ].slice(0, 250)
-    );
-    return withLogin;
+    if (!data?.user || data.user.role === 'user') {
+      throw new Error('Invalid staff credentials or inactive account.');
+    }
+    localStorage.setItem('gs_token', data.token);
+    const session = toStaffSession(data.user);
+    setStaff(session);
+    return session;
   };
 
   const logout = () => {
@@ -310,223 +390,72 @@ export const StaffProvider = ({ children }) => {
     setStaff(null);
   };
 
-  const stampHistory = (action, detail) => ({
-    id: `h-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
-    at: new Date().toISOString(),
-    actorId: staff?.id,
-    actorName: staff?.name || 'System',
-    action,
-    detail,
-  });
-
-  const resolveAssignee = (assigneeId) => {
-    const user = users.items.find((item) => item.id === assigneeId);
-    return user ? { assigneeId: user.id, assignee: user.name } : { assigneeId: '', assignee: '' };
-  };
-
-  const applyTaskRules = (task) => {
-    const next = normalizeTask(task);
-    if (next.assigneeId && next.status === 'Pending') {
-      next.status = 'Assigned';
-    }
-    if (!next.assigneeId && next.status === 'Assigned') {
-      next.status = 'Pending';
-    }
-    if (next.status === 'Completed') {
-      next.completedAt = next.completedAt || new Date().toISOString();
-    } else {
-      next.completedAt = null;
-    }
-    return next;
-  };
-
-  const saveTask = (record) => {
-    const assignee = resolveAssignee(record.assigneeId);
-    let next = applyTaskRules({ ...record, ...assignee });
-    const events = [];
-
-    taskStore.setItems((prev) => {
-      const existing = prev.find((item) => item.id === record.id);
-
-      if (!existing) {
-        events.push({ action: 'Created', detail: 'Task created' });
-        if (next.assignee) {
-          events.push({ action: 'Assigned', detail: `Assigned to ${next.assignee}` });
-        }
-        next = {
-          ...next,
-          id: record.id || `task-${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          history: [...events.map((event) => stampHistory(event.action, event.detail)), ...(next.history || [])],
-        };
-        return [next, ...prev];
-      }
-
-      if (existing.title !== next.title) {
-        events.push({ action: 'Updated', detail: `Title changed to "${next.title}"` });
-      }
-      if (existing.description !== next.description) {
-        events.push({ action: 'Updated', detail: 'Description updated' });
-      }
-      if (existing.assigneeId !== next.assigneeId) {
-        events.push({ action: 'Assigned', detail: next.assignee ? `Assigned to ${next.assignee}` : 'Unassigned' });
-      }
-      if (existing.priority !== next.priority) {
-        events.push({ action: 'Updated', detail: `Priority set to ${next.priority}` });
-      }
-      if (existing.due !== next.due) {
-        events.push({ action: 'Updated', detail: next.due ? `Due date set to ${next.due}` : 'Due date cleared' });
-      }
-      if (existing.status !== next.status) {
-        events.push({ action: 'Status updated', detail: `${existing.status} → ${next.status}` });
-      }
-
-      next = {
-        ...existing,
-        ...next,
-        comments: existing.comments,
-        history: [...events.map((event) => stampHistory(event.action, event.detail)), ...(existing.history || [])],
-      };
-      return prev.map((item) => (item.id === existing.id ? next : item));
+  const saveTask = async (record) => {
+    const saved = await saveTaskRecord({
+      id: record.id,
+      title: record.title,
+      description: record.description,
+      assignedTo: record.assigneeId || null,
+      priority: record.priority,
+      dueDate: record.due,
+      status: record.status,
     });
-
-    logActivity({
-      userId: staff?.id,
-      userName: staff?.name,
-      action: record.id ? 'Updated task' : 'Created task',
-      detail: next.title,
-    });
-    return next;
+    await refreshTasks();
+    return fromApiTask(saved);
   };
 
-  const addTaskComment = (taskId, text) => {
+  const addTaskComment = async (taskId, text) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-
-    taskStore.setItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== taskId) return item;
-        return {
-          ...item,
-          comments: [
-            ...item.comments,
-            {
-              id: `c-${Date.now()}`,
-              text: trimmed,
-              authorId: staff?.id,
-              authorName: staff?.name || 'Staff',
-              createdAt: new Date().toISOString(),
-            },
-          ],
-          history: [stampHistory('Comment added', trimmed.slice(0, 80)), ...item.history],
-        };
-      })
-    );
+    await addTaskCommentRecord(taskId, trimmed);
+    await refreshTasks();
   };
 
-  const setTaskStatus = (taskId, status) => {
-    const current = taskStore.items.find((item) => item.id === taskId);
-    if (!current) return;
-    saveTask({ ...current, status });
+  const setTaskStatus = async (taskId, status) => {
+    await updateTaskStatusRecord(taskId, status);
+    await refreshTasks();
   };
 
-  const removeTask = (id) => {
-    const current = taskStore.items.find((item) => item.id === id);
-    taskStore.remove(id);
-    logActivity({
-      userId: staff?.id,
-      userName: staff?.name,
-      action: 'Deleted task',
-      detail: current?.title || 'A garden task was removed.',
-    });
+  const removeTask = async (id) => {
+    await deleteTaskRecord(id);
+    await refreshTasks();
   };
 
   const tasks = {
-    items: taskStore.items,
-    setItems: taskStore.setItems,
+    items: taskItems,
     save: saveTask,
     remove: removeTask,
     addComment: addTaskComment,
     setStatus: setTaskStatus,
+    refresh: refreshTasks,
     nextStatus: NEXT_TASK_STATUS,
   };
 
-  const createUser = (payload) => {
-    const exists = users.items.some((item) => item.email.toLowerCase() === payload.email.toLowerCase());
-    if (exists) {
-      throw new Error('An account with this email already exists.');
-    }
-    const record = {
-      ...payload,
-      id: `u-${Date.now()}`,
-      status: payload.status || 'Active',
-      lastLogin: null,
-    };
-    users.save(record);
-    logActivity({
-      userId: record.id,
-      userName: record.name,
-      action: 'Created user',
-      detail: `Account created with role ${payload.role}.`,
-    });
+  const createUser = async (payload) => {
+    const record = await createStaffUser(payload);
+    await refreshUsers();
     return record;
   };
 
-  const updateUser = (payload) => {
-    const current = users.items.find((item) => item.id === payload.id);
-    if (!current) throw new Error('User not found.');
-    const next = { ...current, ...payload, password: current.password };
-    users.save(next);
-    if (staff?.id === next.id) setStaff(next);
-    logActivity({
-      userId: next.id,
-      userName: next.name,
-      action: current.role !== next.role ? 'Assigned role' : 'Updated user',
-      detail:
-        current.role !== next.role
-          ? `Role changed from ${current.role} to ${next.role}.`
-          : 'User profile details were updated.',
-    });
+  const updateUser = async (payload) => {
+    const next = await updateStaffUser(payload.id, payload);
+    if (staff?.id === next.id) setStaff({ ...staff, ...next });
+    await refreshUsers();
     return next;
   };
 
-  const setUserStatus = (userId, status) => {
-    const current = users.items.find((item) => item.id === userId);
-    if (!current) throw new Error('User not found.');
-
-    if (status === 'Inactive' && current.role === 'admin') {
-      const activeAdmins = users.items.filter(
-        (item) => item.role === 'admin' && (item.status || 'Active') !== 'Inactive'
-      );
-      if (activeAdmins.length <= 1) {
-        throw new Error('Cannot deactivate the last active admin.');
-      }
-    }
-    if (status === 'Inactive' && staff?.id === userId) {
-      throw new Error('You cannot deactivate the account you are signed in with.');
-    }
-
-    users.setItems((prev) => prev.map((item) => (item.id === userId ? { ...item, status } : item)));
-    logActivity({
-      userId: current.id,
-      userName: current.name,
-      action: status === 'Inactive' ? 'Deactivated user' : 'Activated user',
-      detail: `Account is now ${status.toLowerCase()}.`,
-    });
-    return { ...current, status };
+  const setUserStatus = async (userId, status) => {
+    const next = await setStaffUserStatus(userId, status);
+    await refreshUsers();
+    return next;
   };
 
-  const resetPassword = (userId, password) => {
-    const current = users.items.find((item) => item.id === userId);
-    if (!current) throw new Error('User not found.');
-    users.save({ ...current, password });
-    logActivity({
-      userId: current.id,
-      userName: current.name,
-      action: 'Reset password',
-      detail: 'Password was reset by an administrator.',
-    });
+  const resetPassword = async (userId, password) => {
+    await resetStaffUserPassword(userId, password);
+    await refreshUsers();
   };
+
+  const users = { items: userItems };
 
   const savePermissions = (role, list) => {
     setPermissions((prev) => ({ ...prev, [role]: list }));
@@ -815,10 +744,22 @@ export const StaffProvider = ({ children }) => {
     });
   };
 
+  const pushKeyedNotice = (key, title, description, to) => {
+    setNotifications((prev) => {
+      if (prev.some((row) => row.key === key)) return prev;
+      return [
+        { id: key, key, type: 'ops', title, description, time: new Date().toISOString(), read: false, to },
+        ...prev,
+      ].slice(0, 80);
+    });
+  };
+
   const refreshIrrigation = async () => {
     const data = await fetchIrrigationDesk();
     setIrrigationSchedules(data.schedules || []);
     setIrrigationRecords(data.records || []);
+    const due = (data.schedules || []).filter((row) => row.status === 'Due').length;
+    if (due) pushKeyedNotice(`irrigation-due-${due}`, `${due} irrigation ${due === 1 ? 'schedule is' : 'schedules are'} due`, 'Open Irrigation to water the beds that are waiting.', '/staff/irrigation');
     return data;
   };
 
@@ -861,6 +802,10 @@ export const StaffProvider = ({ children }) => {
     const data = await fetchFertilizersDesk();
     setFertilizerStockItems(data.fertilizers || []);
     setFertilizerApplicationItems(data.applications || []);
+    const low = (data.fertilizers || []).filter((row) => Number(row.stock) <= Number(row.minStock || 0));
+    if (low.length) {
+      pushKeyedNotice(`fertilizer-low-${low.length}`, `${low.length} fertilizer ${low.length === 1 ? 'is' : 'stocks are'} low`, 'Reorder from Fertilizers or Purchases before the next application.', '/staff/fertilizers');
+    }
     return data;
   };
 
@@ -913,7 +858,47 @@ export const StaffProvider = ({ children }) => {
   const refreshPests = async () => {
     const data = await fetchPests();
     setPestItems(data.records || []);
+    const hot = (data.records || []).filter((row) => ['High', 'Critical'].includes(row.severity) && row.status !== 'Resolved');
+    if (hot.length) {
+      pushKeyedNotice(`pest-hot-${hot.length}`, `${hot.length} serious pest/disease ${hot.length === 1 ? 'case needs' : 'cases need'} follow-up`, 'Open Pests to update treatment status.', '/staff/pests');
+    }
     return data;
+  };
+
+  const refreshMaintenance = async () => {
+    const data = await fetchMaintenanceDesk();
+    const records = data.records || [];
+    const summary = data.summary || { total: 0, due: 0, overdue: 0, done: 0 };
+    setMaintenanceItems(records);
+    setMaintenanceTypes(data.types?.length ? data.types : MAINTENANCE_TYPES);
+    setMaintenanceStatuses(data.statuses?.length ? data.statuses : MAINTENANCE_STATUSES);
+    setMaintenanceLocations(data.locations?.length ? data.locations : MAINTENANCE_LOCATIONS);
+    setMaintenanceSummary(summary);
+    notifyOverdueMaintenance(summary, records);
+    return data;
+  };
+
+  const saveMaintenanceItem = async (payload) => {
+    const saved = await saveMaintenanceRecord(payload);
+    await refreshMaintenance();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: payload.id ? 'Updated maintenance' : 'Recorded maintenance',
+      detail: `${saved.type}${saved.location ? ` · ${saved.location}` : ''} · ${saved.status}`,
+    });
+    return saved;
+  };
+
+  const removeMaintenanceItem = async (id) => {
+    await deleteMaintenanceRecord(id);
+    await refreshMaintenance();
+    logActivity({
+      userId: staff?.id,
+      userName: staff?.name,
+      action: 'Deleted maintenance',
+      detail: 'A garden care record was removed.',
+    });
   };
 
   const savePestItem = async (payload) => {
@@ -948,6 +933,32 @@ export const StaffProvider = ({ children }) => {
     refreshIrrigation().catch(() => {});
     refreshFertilizers().catch(() => {});
     refreshPests().catch(() => {});
+    refreshMaintenance().catch(() => {});
+    refreshUsers().catch(() => {});
+    refreshTasks()
+      .then((rows) => {
+        const overdue = (rows || []).filter((task) => task.status !== 'Completed' && task.dueDate && new Date(task.dueDate) < new Date());
+        if (overdue.length) {
+          setNotifications((prev) => {
+            const key = `tasks-overdue-${overdue.length}`;
+            if (prev.some((row) => row.key === key)) return prev;
+            return [
+              {
+                id: key,
+                key,
+                type: 'task',
+                title: `${overdue.length} garden ${overdue.length === 1 ? 'task is' : 'tasks are'} overdue`,
+                description: 'Open Tasks to assign or complete overdue work.',
+                time: new Date().toISOString(),
+                read: false,
+                to: staff?.role === 'gardener' ? '/staff/my-tasks' : '/staff/tasks',
+              },
+              ...prev,
+            ].slice(0, 80);
+          });
+        }
+      })
+      .catch(() => {});
     return undefined;
   }, [staff]);
 
@@ -1052,6 +1063,7 @@ export const StaffProvider = ({ children }) => {
     items: purchaseStore.items,
     save: savePurchase,
     remove: removePurchase,
+    refresh: refreshInventory,
   };
 
   const stock = {
@@ -1103,6 +1115,17 @@ export const StaffProvider = ({ children }) => {
     save: savePestItem,
     remove: removePestItem,
     refresh: refreshPests,
+  };
+
+  const maintenance = {
+    items: maintenanceItems,
+    types: maintenanceTypes,
+    statuses: maintenanceStatuses,
+    locations: maintenanceLocations,
+    summary: maintenanceSummary,
+    save: saveMaintenanceItem,
+    remove: removeMaintenanceItem,
+    refresh: refreshMaintenance,
   };
 
   const fertilizers = {

@@ -4,16 +4,19 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { CustomerProvider } from './context/CustomerContext.jsx';
 import { StaffProvider } from './context/StaffContext.jsx';
+import { ToastProvider } from './context/ToastContext.jsx';
 import './index.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <CustomerProvider>
-        <StaffProvider>
-          <App />
-        </StaffProvider>
-      </CustomerProvider>
+      <ToastProvider>
+        <CustomerProvider>
+          <StaffProvider>
+            <App />
+          </StaffProvider>
+        </CustomerProvider>
+      </ToastProvider>
     </BrowserRouter>
   </StrictMode>
 );

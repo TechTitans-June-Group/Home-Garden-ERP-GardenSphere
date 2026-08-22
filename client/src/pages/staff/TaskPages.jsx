@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext.jsx';
+import { toast } from '../../context/ToastContext.jsx';
 import { formatDate, formatDateTime } from '../../utils/format.js';
 import {
   blankTask,
@@ -180,6 +181,11 @@ const TaskWorkspace = ({ mineOnly = false }) => {
     query || priorityFilter !== 'All' || assigneeFilter !== 'All' || statusFilter !== 'All' || dueFilter !== 'All';
 
   useEffect(() => {
+    tasks.refresh?.().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (!notice) return undefined;
     const timer = setTimeout(() => setNotice(''), 2200);
     return () => clearTimeout(timer);
@@ -207,7 +213,10 @@ const TaskWorkspace = ({ mineOnly = false }) => {
     );
   }, [selectedId, tasks.items]);
 
-  const flash = (message) => setNotice(message);
+  const flash = (message) => {
+    toast.success(message);
+    setNotice(message);
+  };
 
   const openCreate = () => {
     setDraft({ ...blankTask(), createdAt: new Date().toISOString() });
@@ -234,37 +243,37 @@ const TaskWorkspace = ({ mineOnly = false }) => {
     setDraft((prev) => ({ ...prev, [name]: value }));
   };
 
-  const saveDetails = (event) => {
+  const saveDetails = async (event) => {
     event.preventDefault();
     if (!manager || !draft?.title.trim()) return;
-    const saved = tasks.save(draft);
+    const saved = await tasks.save(draft);
     setSelectedId(saved.id);
     setDraft(saved);
     flash(selectedId === 'new' ? 'Task planted in the board' : 'Task updated');
   };
 
-  const advanceTask = (task, event) => {
+  const advanceTask = async (task, event) => {
     event?.stopPropagation();
     const next = NEXT_TASK_STATUS[task.status];
     if (!next) return;
     if (!manager && !isAssignedTo(task, staff)) return;
-    tasks.setStatus(task.id, next);
+    await tasks.setStatus(task.id, next);
     flash(`Moved to ${next}`);
   };
 
-  const submitComment = (event) => {
+  const submitComment = async (event) => {
     event.preventDefault();
     if (!selected || selectedId === 'new' || !comment.trim()) return;
-    tasks.addComment(selected.id, comment);
+    await tasks.addComment(selected.id, comment);
     setComment('');
     setTab('comments');
     flash('Note added');
   };
 
-  const removeSelected = () => {
+  const removeSelected = async () => {
     if (!selected || selectedId === 'new') return;
     if (!window.confirm(`Delete “${selected.title}”? This cannot be undone.`)) return;
-    tasks.remove(selected.id);
+    await tasks.remove(selected.id);
     closeDrawer();
     flash('Task deleted');
   };

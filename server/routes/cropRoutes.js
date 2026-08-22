@@ -27,7 +27,7 @@ router.get('/', getCropsDesk);
 
 // Plantings (Crops)
 router.post('/plantings', authorize(...CROP_MANAGE_ROLES), createPlanting);
-router.put('/plantings/:id', authorize(...CROP_MANAGE_ROLES), updatePlanting);
+router.put('/plantings/:id', updatePlanting);
 router.delete('/plantings/:id', authorize(...CROP_MANAGE_ROLES), deletePlanting);
 
 // Plants

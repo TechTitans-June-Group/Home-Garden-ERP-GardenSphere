@@ -34,6 +34,16 @@ const incomeSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    source: {
+      type: String,
+      default: 'manual',
+      trim: true,
+    },
+    sourceId: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -41,6 +51,8 @@ const incomeSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+incomeSchema.index({ source: 1, sourceId: 1 });
 
 incomeSchema.pre('save', function syncAmount() {
   this.amount = toAmount(this.amount);

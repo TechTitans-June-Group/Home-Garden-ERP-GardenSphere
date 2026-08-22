@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -17,10 +18,10 @@ import {
 } from 'lucide-react';
 import ProductCard from '../components/ProductCard.jsx';
 import StarRating from '../components/StarRating.jsx';
-import { categories, products, testimonials } from '../data/mockData.js';
+import { categories, products as fallbackProducts } from '../data/mockData.js';
 import { useCustomer } from '../context/CustomerContext.jsx';
-
-const featured = products.filter((item) => item.featured).slice(0, 6);
+import { formatPrice } from '../utils/format.js';
+import { fetchShopTestimonials } from '../services/shopService.js';
 const faces = ['/home-lettuce.jpg', '/home-tomato.jpg', '/home-berry.jpg'];
 
 const LeafMark = ({ className = '' }) => (
@@ -38,7 +39,21 @@ const SectionKicker = ({ children }) => (
 );
 
 const Home = () => {
-  const { user } = useCustomer();
+  const { user, products: liveProducts, orders } = useCustomer();
+  const products = liveProducts?.length ? liveProducts : fallbackProducts;
+  const featured = products.filter((item) => item.featured).slice(0, 6);
+  const latestHarvests = [...products]
+    .sort((a, b) => String(b.harvestDate || '').localeCompare(String(a.harvestDate || '')))
+    .slice(0, 2);
+  const harvestHeadline = latestHarvests.map((item) => item.name.replace(/s$/, '')).join(' + ') || 'Fresh beds';
+  const latestOrder = orders?.[0];
+  const [reviews, setReviews] = useState([]);
+
+  useEffect(() => {
+    fetchShopTestimonials()
+      .then(setReviews)
+      .catch(() => setReviews([]));
+  }, []);
 
   return (
     <div className="gs-home-bg relative overflow-hidden bg-[#F6F8F3]">
@@ -86,9 +101,9 @@ const Home = () => {
             </div>
             <div className="mt-10 grid max-w-lg grid-cols-3 gap-3">
               {[
-                ['14+', 'Harvest items'],
+                [`${products.length}+`, 'Harvest items'],
                 ['Same day', 'Garden pick'],
-                ['Grade A', 'Quality shown'],
+                [products[0]?.grade || 'Grade A', 'Quality shown'],
               ].map(([value, label]) => (
                 <div key={label} className="rounded-2xl border border-white/80 bg-white/90 px-3 py-3 text-center shadow-sm backdrop-blur">
                   <p className="font-display text-xl text-emerald-800">{value}</p>
@@ -118,7 +133,7 @@ const Home = () => {
             </div>
             <div className="absolute -right-2 top-6 hidden rotate-[3deg] rounded-2xl border border-lime-100 bg-white px-4 py-3 shadow-card sm:block">
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-600">Today’s harvest</p>
-              <p className="font-display text-xl text-slate-900">Lettuce + Mint</p>
+              <p className="font-display text-xl text-slate-900">{harvestHeadline}</p>
             </div>
             <div className="absolute bottom-4 right-6 hidden items-center gap-1 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-lg sm:flex">
               <Star size={12} className="fill-yellow-300 text-yellow-300" /> Organic beds
@@ -341,26 +356,33 @@ const Home = () => {
           <div>
             <h2 className="font-display text-3xl sm:text-4xl">Follow your harvest order</h2>
             <p className="mt-3 max-w-md text-emerald-100">
-              Every customer order moves from Pending to Confirmed to Completed, with clear status badges.
+              Every customer order moves from Pending to Confirmed to Completed, and harvest sales stay in sync.
             </p>
-            <Link to="/orders" className="mt-6 inline-flex rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-emerald-900">
-              View My Orders
+            <Link to={user ? '/orders' : '/login'} className="mt-6 inline-flex rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-emerald-900">
+              {user ? 'View My Orders' : 'Sign in to track orders'}
             </Link>
           </div>
           <article className="rounded-[1.6rem] bg-white p-5 text-slate-900 shadow-card">
             <div className="flex items-center gap-3">
-              <img src="/home-tomato.jpg" alt="" className="h-14 w-14 rounded-2xl object-cover" />
+              <img src={latestOrder?.image || '/home-tomato.jpg'} alt="" className="h-14 w-14 rounded-2xl object-cover" />
               <div>
-                <p className="text-sm font-semibold text-emerald-700">Order GS-24018</p>
-                <p className="font-display text-2xl">Cherry Tomatoes</p>
+                <p className="text-sm font-semibold text-emerald-700">
+                  {latestOrder ? `Order ${latestOrder.id}` : 'Order status path'}
+                </p>
+                <p className="font-display text-2xl">{latestOrder?.productName || 'Cherry Tomatoes'}</p>
+                {latestOrder ? (
+                  <p className="text-xs text-emerald-700">
+                    {latestOrder.quantity} {latestOrder.unit} · {formatPrice(latestOrder.total)}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="mt-5 flex flex-wrap items-center gap-2 text-sm font-semibold">
-              <span className="rounded-full bg-yellow-100 px-3 py-1 text-yellow-800">Pending</span>
+              <span className={`rounded-full px-3 py-1 ${latestOrder?.status === 'Pending' ? 'bg-yellow-200 text-yellow-900' : 'bg-yellow-100 text-yellow-800'}`}>Pending</span>
               <Truck size={16} className="text-emerald-400" />
-              <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-800">Confirmed</span>
+              <span className={`rounded-full px-3 py-1 ${latestOrder?.status === 'Confirmed' ? 'bg-sky-200 text-sky-900' : 'bg-sky-100 text-sky-800'}`}>Confirmed</span>
               <Truck size={16} className="text-emerald-400" />
-              <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">Completed</span>
+              <span className={`rounded-full px-3 py-1 ${latestOrder?.status === 'Completed' ? 'bg-emerald-200 text-emerald-900' : 'bg-emerald-100 text-emerald-800'}`}>Completed</span>
             </div>
           </article>
         </div>
@@ -370,11 +392,16 @@ const Home = () => {
         <SectionKicker>From our customers</SectionKicker>
         <h2 className="mt-1 font-display text-4xl text-[#14331f]">What Our Customers Say</h2>
         <div className="mt-8 grid gap-5 md:grid-cols-3">
-          {testimonials.map((item, index) => (
-            <article key={item.name} className="relative overflow-hidden rounded-[1.8rem] border border-emerald-50 bg-white p-6 shadow-sm">
+          {reviews.length === 0 && (
+            <p className="rounded-[1.8rem] bg-white p-6 text-sm text-slate-500 md:col-span-3">
+              Customer reviews appear here after a completed harvest order gets feedback.
+            </p>
+          )}
+          {reviews.map((item, index) => (
+            <article key={`${item.name}-${item.productName}-${index}`} className="relative overflow-hidden rounded-[1.8rem] border border-emerald-50 bg-white p-6 shadow-sm">
               <LeafMark className="pointer-events-none absolute -right-3 -top-3 h-16 w-16 text-lime-100" />
               <div className="flex items-center gap-3">
-                <img src={faces[index % faces.length]} alt={item.name} className="h-12 w-12 rounded-full object-cover" />
+                <img src={item.image || faces[index % faces.length]} alt={item.name} className="h-12 w-12 rounded-full object-cover" />
                 <div>
                   <p className="font-semibold text-slate-900">{item.name}</p>
                   <p className="text-xs text-emerald-700">{item.role}</p>

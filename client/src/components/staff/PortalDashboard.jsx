@@ -1,7 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, ShoppingBag, Wheat } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext.jsx';
+import { canAccessPath } from '../../data/staffData.js';
+import { toast } from '../../context/ToastContext.jsx';
+import { formatPrice } from '../../utils/format.js';
 
 const HubCard = ({ module }) => {
   const Icon = module.icon;
@@ -26,23 +29,54 @@ const HubCard = ({ module }) => {
   );
 };
 
+const STATUS_TINT = {
+  Pending: 'bg-amber-100 text-amber-800',
+  Confirmed: 'bg-sky-100 text-sky-800',
+  Completed: 'bg-emerald-100 text-emerald-800',
+  Cancelled: 'bg-rose-100 text-rose-700',
+};
+
 const PortalDashboard = ({ title, greeting, stats = [], modules = [], quickTo }) => {
-  const { staff } = useStaff();
+  const { staff, purchases, sales, harvests, permissions } = useStaff();
+  const visibleModules = modules.filter((module) => canAccessPath(permissions, staff?.role, module.to));
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [note, setNote] = useState(() => localStorage.getItem('gs_staff_note') || '');
   const [saved, setSaved] = useState(false);
-  const hasModules = modules.length > 0;
+  const hasModules = visibleModules.length > 0;
+
+  useEffect(() => {
+    const load = () => {
+      purchases.refresh?.().catch(() => {});
+      harvests.refresh?.().catch(() => {});
+    };
+    load();
+    const timer = window.setInterval(load, 8000);
+    return () => window.clearInterval(timer);
+    // Refresh live shop/harvest numbers while the dashboard is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staff?.id]);
+
+  const shopOrders = (purchases.items || []).filter((row) => (row.source || 'supplier') === 'customer');
+  const openOrders = shopOrders.filter((row) => row.status === 'Pending' || row.status === 'Confirmed');
+  const openSales = (sales.items || []).filter((row) => row.status === 'Pending' || row.status === 'Confirmed');
+  const latestOrders = [...openOrders].slice(0, 3);
+  const latestSales = [...openSales].slice(0, 3);
+  const canPurchases = ['admin', 'inventory_manager', 'garden_manager'].includes(staff?.role);
+  const canSales = ['admin', 'garden_manager'].includes(staff?.role);
+  const orderTo = canPurchases ? '/staff/purchases' : '/staff';
+  const saleTo = canSales ? '/staff/sales' : staff?.role === 'gardener' ? '/staff/record-harvest' : '/staff/income';
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return modules.filter((item) => item.title.toLowerCase().includes(q) || item.description.toLowerCase().includes(q));
-  }, [query, modules]);
+    return visibleModules.filter((item) => item.title.toLowerCase().includes(q) || item.description.toLowerCase().includes(q));
+  }, [query, visibleModules]);
 
   const saveNote = () => {
     localStorage.setItem('gs_staff_note', note);
     setSaved(true);
+    toast.success('Note saved', 'Your dashboard reminder was updated.');
     setTimeout(() => setSaved(false), 1600);
   };
 
@@ -53,7 +87,7 @@ const PortalDashboard = ({ title, greeting, stats = [], modules = [], quickTo })
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">{title}</h1>
           <p className="mt-2 text-slate-500">{greeting}</p>
         </div>
-          {quickTo && (
+          {quickTo && canAccessPath(permissions, staff?.role, quickTo) && (
             <button
               type="button"
               onClick={() => navigate(quickTo)}
@@ -64,8 +98,12 @@ const PortalDashboard = ({ title, greeting, stats = [], modules = [], quickTo })
           )}
       </div>
 
-      <div className={`mt-6 grid gap-3 ${stats.length > 3 ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-3'}`}>
-        {stats.map((stat) => (
+      <div className={`mt-6 grid gap-3 ${stats.length + 2 > 3 ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-3'}`}>
+        {[
+          { label: 'Open shop orders', value: String(openOrders.length) },
+          { label: 'Open harvest sales', value: String(openSales.length) },
+          ...stats,
+        ].map((stat) => (
           <article
             key={stat.label}
             className="rounded-2xl border border-white/80 bg-white/80 px-5 py-4 shadow-[0_8px_24px_rgba(20,83,45,0.04)]"
@@ -82,7 +120,7 @@ const PortalDashboard = ({ title, greeting, stats = [], modules = [], quickTo })
           <h2 className="text-xl font-bold text-slate-900">Operations hub</h2>
           <p className="mt-1 text-sm text-slate-500">Open a GardenSphere module to manage records.</p>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {modules.map((module) => (
+            {visibleModules.map((module) => (
               <HubCard key={module.to} module={module} />
             ))}
           </div>
@@ -116,6 +154,52 @@ const PortalDashboard = ({ title, greeting, stats = [], modules = [], quickTo })
                 )}
               </div>
             )}
+          </article>
+
+          <article className="rounded-[28px] bg-white p-5 shadow-[0_10px_40px_rgba(20,83,45,0.06)]">
+            <h3 className="font-bold text-slate-900">Live orders</h3>
+            <p className="mt-1 text-xs text-slate-500">Shop orders and harvest sales update here.</p>
+            <div className="mt-3 grid gap-2">
+              {latestOrders.length === 0 && latestSales.length === 0 ? (
+                <p className="rounded-2xl bg-[#F8FAF7] px-3 py-2 text-sm text-slate-500">No open customer orders right now.</p>
+              ) : null}
+              {latestOrders.map((row) => (
+                <Link
+                  key={row.id || row.orderRef}
+                  to={orderTo}
+                  className="rounded-2xl bg-[#F8FAF7] px-3 py-2 hover:bg-emerald-50"
+                >
+                  <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <ShoppingBag size={14} className="text-emerald-600" />
+                    {row.item || row.itemName}
+                  </p>
+                  <p className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                    <span>{row.customerName || row.supplier} · {row.orderRef || 'Shop'}</span>
+                    <span className={`rounded-full px-2 py-0.5 font-semibold ${STATUS_TINT[row.status] || 'bg-slate-100 text-slate-600'}`}>
+                      {row.status}
+                    </span>
+                  </p>
+                </Link>
+              ))}
+              {latestSales.map((row) => (
+                <Link
+                  key={row.id}
+                  to={saleTo}
+                  className="rounded-2xl bg-[#F8FAF7] px-3 py-2 hover:bg-emerald-50"
+                >
+                  <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <Wheat size={14} className="text-amber-600" />
+                    {row.crop}
+                  </p>
+                  <p className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                    <span>{row.customer} · {formatPrice(row.amount)}</span>
+                    <span className={`rounded-full px-2 py-0.5 font-semibold ${STATUS_TINT[row.status] || 'bg-slate-100 text-slate-600'}`}>
+                      {row.status}
+                    </span>
+                  </p>
+                </Link>
+              ))}
+            </div>
           </article>
 
           <article className="rounded-[28px] bg-white p-5 shadow-[0_10px_40px_rgba(20,83,45,0.06)]">

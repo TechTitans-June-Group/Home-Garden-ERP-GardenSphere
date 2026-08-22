@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext.jsx';
+import { toast } from '../../context/ToastContext.jsx';
 import { formatDate, formatPrice } from '../../utils/format.js';
 import {
   EXPENSE_CATEGORIES,
@@ -176,6 +177,7 @@ const LedgerPage = ({
   }, []);
 
   const flash = (message) => {
+    toast.success(message);
     setNotice(message);
     setTimeout(() => setNotice(''), 2200);
   };

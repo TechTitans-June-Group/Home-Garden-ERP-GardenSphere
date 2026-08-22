@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Leaf, Mail, Search, Send, X } from 'lucide-react';
 import { formatDateTime } from '../../utils/format.js';
+import { toast } from '../../context/ToastContext.jsx';
 import {
   deleteContactMessage,
   fetchStaffMessage,
@@ -64,6 +65,7 @@ const MessagesPage = () => {
   const [busy, setBusy] = useState(false);
 
   const flash = (message) => {
+    toast.success(message);
     setNotice(message);
     setTimeout(() => setNotice(''), 2200);
   };

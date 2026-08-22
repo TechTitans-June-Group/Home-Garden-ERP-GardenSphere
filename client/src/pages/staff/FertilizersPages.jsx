@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext.jsx';
+import { toast } from '../../context/ToastContext.jsx';
 import { formatDate, formatPrice } from '../../utils/format.js';
 
 const Hero = ({ kicker, title, subtitle, icon: Icon, action }) => (
@@ -89,6 +90,7 @@ export const FertilizersPage = () => {
   });
 
   const showNotice = (text) => {
+    toast.success(text);
     setNotice(text);
     setTimeout(() => setNotice(''), 3500);
   };

@@ -14,6 +14,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext.jsx';
+import { toast } from '../../context/ToastContext.jsx';
 import { formatDate } from '../../utils/format.js';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -385,7 +386,7 @@ export const PestPage = () => {
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
 
-  const showNotice = (text) => { setNotice(text); setTimeout(() => setNotice(''), 3500); };
+  const showNotice = (text) => { toast.success(text); setNotice(text); setTimeout(() => setNotice(''), 3500); };
   const isManager = ['admin', 'garden_manager'].includes(staff?.role);
 
   const stats = useMemo(() => {
@@ -701,7 +702,7 @@ export const ReportPestPage = () => {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm());
 
-  const showNotice = (text) => { setNotice(text); setTimeout(() => setNotice(''), 4000); };
+  const showNotice = (text) => { toast.success(text); setNotice(text); setTimeout(() => setNotice(''), 4000); };
 
   // Only show this gardener's recent reports (or all if none attributed)
   const myReports = useMemo(() => {

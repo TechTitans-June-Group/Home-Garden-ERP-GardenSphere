@@ -19,6 +19,17 @@ const harvestSaleSchema = new mongoose.Schema(
       required: [true, 'Customer is required'],
       trim: true,
     },
+    customerEmail: {
+      type: String,
+      default: '',
+      trim: true,
+      lowercase: true,
+    },
+    orderRef: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     date: {
       type: Date,
       required: true,

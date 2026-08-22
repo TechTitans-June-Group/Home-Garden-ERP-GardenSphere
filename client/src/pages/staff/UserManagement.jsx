@@ -17,7 +17,8 @@ import {
   X,
 } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext.jsx';
-import { ROLE_LABELS, ROLE_PERMISSIONS } from '../../data/staffData.js';
+import { toast } from '../../context/ToastContext.jsx';
+import { ALL_PERMISSIONS, LOCKED_PERMISSIONS, ROLE_LABELS, ROLE_PERMISSIONS } from '../../data/staffData.js';
 import { formatDateTime } from '../../utils/format.js';
 
 const emptyUser = {
@@ -128,7 +129,7 @@ export const UsersPage = () => {
     setMode('reset');
   };
 
-  const handleSave = (event) => {
+  const handleSave = async (event) => {
     event.preventDefault();
     setError('');
     try {
@@ -136,11 +137,15 @@ export const UsersPage = () => {
         if (!form.password || form.password.length < 6) {
           throw new Error('Password must be at least 6 characters.');
         }
-        createUser(form);
-        setNotice(`${form.name} was added to the garden team.`);
+        await createUser(form);
+        const created = `${form.name} was added to the garden team.`;
+        setNotice(created);
+        toast.success('Staff member added', created);
       } else {
-        updateUser(form);
-        setNotice(`${form.name} was updated.`);
+        await updateUser(form);
+        const updated = `${form.name} was updated.`;
+        setNotice(updated);
+        toast.success('Staff member updated', updated);
       }
       setMode(null);
     } catch (err) {
@@ -156,15 +161,16 @@ export const UsersPage = () => {
     setMode('status');
   };
 
-  const handleStatus = (user) => {
+  const handleStatus = async (user) => {
     try {
       const nextStatus = isActive(user) ? 'Inactive' : 'Active';
-      setUserStatus(user.id, nextStatus);
-      setNotice(
+      await setUserStatus(user.id, nextStatus);
+      const statusText =
         nextStatus === 'Inactive'
           ? `${user.name} was deactivated and can no longer sign in.`
-          : `${user.name} was activated.`
-      );
+          : `${user.name} was activated.`;
+      setNotice(statusText);
+      toast.success(nextStatus === 'Inactive' ? 'Account deactivated' : 'Account activated', statusText);
       setMode(null);
       setTarget(null);
     } catch (err) {
@@ -172,7 +178,7 @@ export const UsersPage = () => {
     }
   };
 
-  const handleReset = (event) => {
+  const handleReset = async (event) => {
     event.preventDefault();
     setError('');
     if (password.next.length < 6) {
@@ -183,9 +189,14 @@ export const UsersPage = () => {
       setError('Passwords do not match.');
       return;
     }
-    resetPassword(target.id, password.next);
-    setNotice(`Password reset for ${target.name}.`);
-    setMode(null);
+    try {
+      await resetPassword(target.id, password.next);
+      setNotice(`Password reset for ${target.name}.`);
+      toast.success('Password reset', `New password saved for ${target.name}.`);
+      setMode(null);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const recentFor = (userId) => activity.filter((item) => item.userId === userId).slice(0, 1);
@@ -429,14 +440,38 @@ export const UsersPage = () => {
 };
 
 export const RolesPage = () => {
-  const { users, permissions } = useStaff();
+  const { users, permissions, savePermissions } = useStaff();
+
+  const toggle = (role, permission) => {
+    if ((LOCKED_PERMISSIONS[role] || []).includes(permission)) return;
+    const current = permissions?.[role] || ROLE_PERMISSIONS[role] || [];
+    let next;
+    if (permission === 'Full system access') {
+      next = current.includes(permission)
+        ? current.filter((item) => item !== permission)
+        : [...ALL_PERMISSIONS];
+    } else if (current.includes('Full system access')) {
+      next = ALL_PERMISSIONS.filter((item) => item !== 'Full system access' && item !== permission);
+    } else {
+      next = current.includes(permission)
+        ? current.filter((item) => item !== permission)
+        : [...current, permission];
+    }
+    savePermissions(role, next);
+    toast.success('Permissions updated', `${ROLE_LABELS[role]} can ${next.includes(permission) || next.includes('Full system access') ? 'now use' : 'no longer use'} ${permission}.`);
+  };
+
+  const resetRole = (role) => {
+    savePermissions(role, [...(ROLE_PERMISSIONS[role] || [])]);
+    toast.success('Permissions reset', `${ROLE_LABELS[role]} is back to the default access list.`);
+  };
 
   return (
     <div>
       <PageHero
         kicker="Access"
         title="Roles & permissions"
-        subtitle="Each garden role has a clear set of doors it can open across GardenSphere."
+        subtitle="Turn doors on or off for each garden role. Sidebar and pages update immediately."
         icon={Shield}
       />
 
@@ -446,6 +481,7 @@ export const RolesPage = () => {
           const Icon = theme.icon;
           const assigned = users.items.filter((user) => user.role === role);
           const list = permissions?.[role] || ROLE_PERMISSIONS[role] || [];
+          const locked = LOCKED_PERMISSIONS[role] || [];
           return (
             <article key={role} className="overflow-hidden rounded-[28px] bg-white shadow-[0_10px_40px_rgba(20,83,45,0.06)]">
               <div className={`bg-gradient-to-r ${theme.accent} px-6 py-5 text-white`}>
@@ -455,18 +491,39 @@ export const RolesPage = () => {
                 <div className="mt-1 flex items-end justify-between gap-3">
                   <h2 className="text-2xl font-bold">{ROLE_LABELS[role]}</h2>
                   <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
-                    {assigned.length} staff
+                    {assigned.length} staff · {list.length} on
                   </span>
                 </div>
               </div>
               <div className="p-6">
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Permissions</p>
-                <ul className="mt-3 flex flex-wrap gap-2">
-                  {list.map((permission) => (
-                    <li key={permission} className="rounded-full bg-[#F3F7F1] px-3 py-1.5 text-sm text-slate-700">
-                      {permission}
-                    </li>
-                  ))}
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Permissions</p>
+                  <button type="button" className="text-xs font-semibold text-emerald-700" onClick={() => resetRole(role)}>
+                    Reset defaults
+                  </button>
+                </div>
+                <ul className="mt-3 grid gap-2">
+                  {ALL_PERMISSIONS.map((permission) => {
+                    const on = list.includes(permission) || (list.includes('Full system access') && permission !== 'Full system access');
+                    const isLocked = locked.includes(permission);
+                    return (
+                      <li key={permission}>
+                        <label className={`flex items-center justify-between gap-3 rounded-2xl px-3 py-2 text-sm ${on ? 'bg-emerald-50 text-emerald-900' : 'bg-[#F3F7F1] text-slate-600'}`}>
+                          <span>
+                            {permission}
+                            {isLocked ? <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Locked</span> : null}
+                          </span>
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-emerald-600"
+                            checked={on || isLocked}
+                            disabled={isLocked}
+                            onChange={() => toggle(role, permission)}
+                          />
+                        </label>
+                      </li>
+                    );
+                  })}
                 </ul>
                 {assigned.length > 0 && (
                   <div className="mt-5 flex -space-x-2">

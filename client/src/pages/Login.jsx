@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Leaf } from 'lucide-react';
 import { useCustomer } from '../context/CustomerContext.jsx';
 import { useStaff } from '../context/StaffContext.jsx';
+import { toast } from '../context/ToastContext.jsx';
+import { ROLE_LABELS } from '../data/staffData.js';
 
 const Login = () => {
   const { login: customerLogin } = useCustomer();
@@ -26,22 +28,27 @@ const Login = () => {
     }
 
     try {
-      await staffLogin(form.email, form.password);
+      const session = await staffLogin(form.email, form.password);
+      const role = ROLE_LABELS[session.role] || 'Staff';
+      toast.success(`Welcome to ${role} Dashboard`, `Hi ${session.name.split(' ')[0]}, you are signed in.`);
       navigate('/staff');
       return;
     } catch (err) {
       const message = err.message || '';
       if (message.includes('server') || message.includes('authorized') || message.includes('deactivated')) {
         setError(message);
+        toast.error('Could not sign in', message);
         return;
       }
     }
 
     try {
-      customerLogin(form.email, form.password, form.remember);
+      await customerLogin(form.email, form.password, form.remember);
+      toast.success('Welcome back', 'You are signed in to GardenSphere.');
       navigate(location.state?.from || '/');
     } catch {
       setError('Invalid email or password.');
+      toast.error('Could not sign in', 'Invalid email or password.');
     }
   };
 

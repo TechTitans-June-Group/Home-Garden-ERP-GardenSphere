@@ -1,41 +1,62 @@
 import api from './api.js';
 
+const apiError = (error, fallback) => {
+  throw new Error(error.response?.data?.message || fallback);
+};
+
 export const fetchTasks = async () => {
-  const { data } = await api.get('/tasks');
-  return data.tasks;
+  try {
+    const { data } = await api.get('/tasks');
+    return data.tasks || [];
+  } catch (error) {
+    apiError(error, 'Could not load tasks.');
+  }
 };
 
-export const fetchMyTasks = async () => {
-  const { data } = await api.get('/tasks/mine');
-  return data.tasks;
+export const fetchTaskAssignees = async () => {
+  try {
+    const { data } = await api.get('/tasks/assignees');
+    return data.assignees || [];
+  } catch (error) {
+    apiError(error, 'Could not load assignees.');
+  }
 };
 
-export const fetchAssignees = async () => {
-  const { data } = await api.get('/tasks/assignees');
-  return data.assignees;
+export const saveTaskRecord = async (payload) => {
+  try {
+    if (payload.id) {
+      const { data } = await api.put(`/tasks/${payload.id}`, payload);
+      return data.task;
+    }
+    const { data } = await api.post('/tasks', payload);
+    return data.task;
+  } catch (error) {
+    apiError(error, 'Could not save task.');
+  }
 };
 
-export const createTask = async (payload) => {
-  const { data } = await api.post('/tasks', payload);
-  return data.task;
+export const updateTaskStatusRecord = async (id, status) => {
+  try {
+    const { data } = await api.patch(`/tasks/${id}/status`, { status });
+    return data.task;
+  } catch (error) {
+    apiError(error, 'Could not update task status.');
+  }
 };
 
-export const updateTask = async (id, payload) => {
-  const { data } = await api.put(`/tasks/${id}`, payload);
-  return data.task;
+export const addTaskCommentRecord = async (id, text) => {
+  try {
+    const { data } = await api.post(`/tasks/${id}/comments`, { text });
+    return data.task;
+  } catch (error) {
+    apiError(error, 'Could not add comment.');
+  }
 };
 
-export const updateTaskStatus = async (id, status) => {
-  const { data } = await api.patch(`/tasks/${id}/status`, { status });
-  return data.task;
-};
-
-export const addTaskComment = async (id, text) => {
-  const { data } = await api.post(`/tasks/${id}/comments`, { text });
-  return data.task;
-};
-
-export const deleteTask = async (id) => {
-  const { data } = await api.delete(`/tasks/${id}`);
-  return data;
+export const deleteTaskRecord = async (id) => {
+  try {
+    await api.delete(`/tasks/${id}`);
+  } catch (error) {
+    apiError(error, 'Could not delete task.');
+  }
 };

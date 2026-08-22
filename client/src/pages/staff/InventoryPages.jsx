@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext.jsx';
+import { toast } from '../../context/ToastContext.jsx';
 import { formatDate, formatPrice } from '../../utils/format.js';
 import {
   CATEGORY_TINTS,
@@ -168,6 +169,7 @@ export const InventoryPage = () => {
   const [view, setView] = useState('cards');
 
   const flash = (message) => {
+    toast.success(message);
     setNotice(message);
     setTimeout(() => setNotice(''), 2200);
   };
@@ -706,6 +708,7 @@ export const PurchasesPage = () => {
   }, []);
 
   const flash = (message) => {
+    toast.success(message);
     setNotice(message);
     setTimeout(() => setNotice(''), 2200);
   };
@@ -847,12 +850,12 @@ export const PurchasesPage = () => {
                             </button>
                           )}
                           {isCustomer && row.status === 'Pending' && (
-                            <button type="button" className="text-sky-700" onClick={() => updateStatus(row, 'Confirmed', 'Customer order confirmed')}>
+                            <button type="button" className="text-sky-700" onClick={() => updateStatus(row, 'Confirmed', 'Order confirmed successfully')}>
                               Confirm
                             </button>
                           )}
                           {isCustomer && row.status === 'Confirmed' && (
-                            <button type="button" className="text-emerald-700" onClick={() => updateStatus(row, 'Completed', 'Customer order completed')}>
+                            <button type="button" className="text-emerald-700" onClick={() => updateStatus(row, 'Completed', 'Order completed successfully')}>
                               Complete
                             </button>
                           )}
@@ -1011,6 +1014,7 @@ export const SuppliersPage = () => {
   const [query, setQuery] = useState('');
 
   const flash = (message) => {
+    toast.success(message);
     setNotice(message);
     setTimeout(() => setNotice(''), 2200);
   };
@@ -1158,6 +1162,7 @@ export const StockPage = () => {
   const [notice, setNotice] = useState('');
 
   const flash = (message) => {
+    toast.success(message);
     setNotice(message);
     setTimeout(() => setNotice(''), 2200);
   };

@@ -4,6 +4,7 @@ import CancelModal from '../components/CancelModal.jsx';
 import FeedbackModal from '../components/FeedbackModal.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useCustomer } from '../context/CustomerContext.jsx';
+import { toast } from '../context/ToastContext.jsx';
 import { formatDate, formatPrice } from '../utils/format.js';
 import { formatDeliverySlot } from '../utils/checkout.js';
 import { products } from '../data/mockData.js';
@@ -81,8 +82,11 @@ const OrderDetails = () => {
             await cancelOrder(order.id);
             setCancelOpen(false);
             setMessage('Order cancelled.');
+            toast.success('Order cancelled', `${order.id} was cancelled.`);
           } catch (err) {
-            setMessage(err.message || 'Could not cancel this order.');
+            const text = err.message || 'Could not cancel this order.';
+            setMessage(text);
+            toast.error('Could not cancel order', text);
           }
         }}
       />
@@ -94,6 +98,7 @@ const OrderDetails = () => {
           submitFeedback(order.id, rating, comment);
           setFeedbackOpen(false);
           setMessage('Feedback submitted. Thank you!');
+          toast.success('Feedback submitted', 'Thank you for rating your harvest.');
         }}
       />
     </div>

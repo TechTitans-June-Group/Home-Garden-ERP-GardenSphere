@@ -1,4 +1,4 @@
-import { Bug, ClipboardList, Droplets, FlaskConical, Mail, Package, PieChart, ShoppingCart, Sprout, Truck, Warehouse, Wheat } from 'lucide-react';
+import { BadgeDollarSign, Bug, ClipboardList, Droplets, FlaskConical, Leaf, Mail, Package, PieChart, ShoppingCart, Sprout, Truck, Wallet, Warehouse, Wheat } from 'lucide-react';
 import PortalDashboard from '../../components/staff/PortalDashboard.jsx';
 import { useStaff } from '../../context/StaffContext.jsx';
 import { ROLE_LABELS } from '../../data/staffData.js';
@@ -28,12 +28,15 @@ const ManagerDashboard = () => {
         { title: 'Fertilizer records', description: 'Applications, crop assignments, quantities, and costs.', to: '/staff/fertilizers', icon: FlaskConical, tint: 'bg-lime-100 text-lime-700' },
         { title: 'Pest & disease desk', description: 'Severity, treatments, and follow-up status for crop health.', to: '/staff/pests', icon: Bug, tint: 'bg-orange-100 text-orange-700' },
         { title: 'Task board', description: `${tasks.items.filter((item) => item.status !== 'Completed').length} open garden tasks to assign or complete.`, to: '/staff/tasks', icon: ClipboardList, tint: 'bg-amber-100 text-amber-700' },
+        { title: 'Maintenance', description: 'Record mulching, staking, weeding, and other garden care.', to: '/staff/maintenance', icon: Leaf, tint: 'bg-lime-100 text-lime-700' },
         { title: 'Harvest records', description: 'Quantities, grades, harvest dates, locations, and selling price.', to: '/staff/harvests', icon: Wheat, tint: 'bg-yellow-100 text-yellow-800' },
         { title: 'Sales desk', description: 'Link harvested lots to customer sales from pending to completed.', to: '/staff/sales', icon: ShoppingCart, tint: 'bg-rose-100 text-rose-700' },
         { title: 'Inventory register', description: 'Manage seeds, fertilizers, tools, and minimum stock levels.', to: '/staff/inventory', icon: Warehouse, tint: 'bg-emerald-100 text-emerald-700' },
         { title: 'Purchases', description: 'Supplier restocks and customer shop orders.', to: '/staff/purchases', icon: Package, tint: 'bg-amber-100 text-amber-700' },
         { title: 'Suppliers', description: 'Keep contacts for seed, compost, and tool suppliers.', to: '/staff/suppliers', icon: Truck, tint: 'bg-sky-100 text-sky-700' },
         { title: 'Garden reports', description: 'Crop, harvest, task, inventory, and profit reports for the garden.', to: '/staff/manager-reports', icon: PieChart, tint: 'bg-teal-100 text-teal-700' },
+        { title: 'Expense register', description: 'Seeds, fertilizers, water, tools, and other garden costs.', to: '/staff/expenses', icon: Wallet, tint: 'bg-orange-100 text-orange-700' },
+        { title: 'Income register', description: 'Harvest and shop sales income linked from the garden.', to: '/staff/income', icon: BadgeDollarSign, tint: 'bg-emerald-100 text-emerald-700' },
       ]}
     />
   );

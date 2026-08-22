@@ -40,17 +40,33 @@ const demoUsers = [
   },
 ];
 
+const ensureDemoCustomer = async () => {
+  const existing = await User.findOne({ email: 'customer@gardensphere.com' });
+  if (existing) return;
+  await User.create({
+    name: 'Ayesha Silva',
+    email: 'customer@gardensphere.com',
+    password: 'Customer@123',
+    role: ROLES.USER,
+    phone: '0771234567',
+    address: '12 Garden Lane, Kandy',
+  });
+  console.log('Demo customer account created.');
+};
+
 const seedUsers = async () => {
   const count = await User.countDocuments();
 
   if (count > 0) {
-    console.log(`Users already exist (${count}). Skipping seed.`);
+    console.log(`Users already exist (${count}). Skipping staff seed.`);
+    await ensureDemoCustomer();
     return;
   }
 
   for (const user of demoUsers) {
     await User.create(user);
   }
+  await ensureDemoCustomer();
   console.log('Demo users seeded for all GardenSphere roles.');
 };
 

@@ -35,6 +35,19 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    address: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    wishlist: {
+      type: [String],
+      default: [],
+    },
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: true,

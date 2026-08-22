@@ -1,5 +1,6 @@
 import Harvest from '../models/Harvest.js';
 import HarvestSale from '../models/HarvestSale.js';
+import Purchase from '../models/Purchase.js';
 import { harvestValue, saleStatusFromHarvest } from '../config/harvest.js';
 
 const seedHarvest = async () => {
@@ -87,6 +88,10 @@ const seedHarvest = async () => {
 
   const saleCount = await HarvestSale.countDocuments();
   if (saleCount > 0) {
+    await HarvestSale.updateMany(
+      { customer: 'Ayesha Silva', $or: [{ customerEmail: '' }, { customerEmail: { $exists: false } }] },
+      { $set: { customerEmail: 'customer@gardensphere.com' } }
+    );
     console.log(`Harvest sales already exist (${saleCount}). Skipping sale seed.`);
     return;
   }
@@ -101,6 +106,7 @@ const seedHarvest = async () => {
       harvestId: cherry._id,
       crop: cherry.crop,
       customer: 'Ayesha Silva',
+      customerEmail: 'customer@gardensphere.com',
       date: '2026-08-18',
       quantity: 2,
       unit: cherry.unit,
@@ -144,4 +150,70 @@ const seedHarvest = async () => {
   console.log('Harvest sales seeded.');
 };
 
-export default seedHarvest;
+const seedReviews = async () => {
+  const existing = await Purchase.countDocuments({ source: 'customer', 'feedback.rating': { $gte: 1 } });
+  if (existing > 0) {
+    console.log(`Customer reviews already exist (${existing}). Skipping review seed.`);
+    return;
+  }
+
+  await Purchase.insertMany([
+    {
+      source: 'customer',
+      itemName: 'Cherry Tomatoes',
+      customerName: 'Ayesha Silva',
+      customerEmail: 'customer@gardensphere.com',
+      image: '/products/tomato.jpg',
+      orderRef: 'GS-REV-2401',
+      unit: 'KG',
+      quantity: 2,
+      unitCost: 350,
+      date: '2026-08-10',
+      status: 'Completed',
+      feedback: {
+        rating: 5,
+        comment: 'The cherry tomatoes tasted like they were picked that morning. Quality grade was accurate.',
+      },
+    },
+    {
+      source: 'customer',
+      itemName: 'Fresh Carrots',
+      customerName: 'Kasun Fernando',
+      customerEmail: 'kasun@gardensphere.com',
+      image: '/products/carrot.jpg',
+      orderRef: 'GS-REV-2402',
+      unit: 'KG',
+      quantity: 3,
+      unitCost: 220,
+      date: '2026-08-12',
+      status: 'Completed',
+      feedback: {
+        rating: 5,
+        comment: 'Harvest date was on the label and the carrots were sweet and neatly packed.',
+      },
+    },
+    {
+      source: 'customer',
+      itemName: 'Fresh Mint',
+      customerName: 'Ishara Jayawardena',
+      customerEmail: 'ishara@gardensphere.com',
+      image: '/products/mint.jpg',
+      orderRef: 'GS-REV-2403',
+      unit: 'Bunch',
+      quantity: 2,
+      unitCost: 120,
+      date: '2026-08-14',
+      status: 'Completed',
+      feedback: {
+        rating: 4,
+        comment: 'Mint arrived healthy and lasted all week in the kitchen. Will order again.',
+      },
+    },
+  ]);
+  console.log('Customer harvest reviews seeded.');
+};
+
+export default async function seedHarvestAndReviews() {
+  await seedHarvest();
+  await seedReviews();
+}

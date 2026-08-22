@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext.jsx';
+import { toast } from '../../context/ToastContext.jsx';
 import { formatDate } from '../../utils/format.js';
 
 const Hero = ({ kicker, title, subtitle, icon: Icon, action }) => (
@@ -77,6 +78,7 @@ export const IrrigationPage = () => {
   });
 
   const showNotice = (text) => {
+    toast.success(text);
     setNotice(text);
     setTimeout(() => setNotice(''), 3500);
   };
@@ -495,6 +497,7 @@ export const RecordIrrigationPage = () => {
   });
 
   const showNotice = (text) => {
+    toast.success(text);
     setNotice(text);
     setTimeout(() => setNotice(''), 3500);
   };

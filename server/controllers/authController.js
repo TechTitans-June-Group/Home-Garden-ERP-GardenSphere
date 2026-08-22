@@ -1,20 +1,24 @@
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
 import { ROLES } from '../config/roles.js';
+import logActivity from '../utils/logActivity.js';
 
-const formatUser = (user) => ({
-  id: user._id,
+export const formatUser = (user) => ({
+  id: String(user._id),
   name: user.name,
   email: user.email,
   role: user.role,
-  phone: user.phone,
+  phone: user.phone || '',
+  address: user.address || '',
+  wishlist: user.wishlist || [],
   isActive: user.isActive,
+  lastLogin: user.lastLogin || null,
   createdAt: user.createdAt,
 });
 
 export const registerUser = async (req, res, next) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, phone, address } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
@@ -30,6 +34,7 @@ export const registerUser = async (req, res, next) => {
       email,
       password,
       phone,
+      address: address || '',
       role: ROLES.USER,
     });
 
@@ -60,6 +65,12 @@ export const loginUser = async (req, res, next) => {
       return res.status(403).json({ message: 'Account is deactivated' });
     }
 
+    user.lastLogin = new Date();
+    await user.save({ validateBeforeSave: false });
+    if (user.role !== ROLES.USER) {
+      await logActivity({ user, action: 'Logged in', detail: 'Signed in to the staff portal.' });
+    }
+
     res.json({
       user: formatUser(user),
       token: generateToken(user._id, user.role),
@@ -71,4 +82,38 @@ export const loginUser = async (req, res, next) => {
 
 export const getMe = async (req, res) => {
   res.json({ user: formatUser(req.user) });
+};
+
+export const updateMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (req.body.name) user.name = String(req.body.name).trim();
+    if (req.body.phone !== undefined) user.phone = String(req.body.phone).trim();
+    if (req.body.address !== undefined) user.address = String(req.body.address).trim();
+    if (req.body.email) user.email = String(req.body.email).trim().toLowerCase();
+    await user.save();
+    res.json({ user: formatUser(user) });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const password = String(req.body?.password || '');
+    if (!email || password.length < 6) {
+      return res.status(400).json({ message: 'Email and a new password (6+ characters) are required.' });
+    }
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      return res.status(404).json({ message: 'No account exists for that email.' });
+    }
+    user.password = password;
+    await user.save();
+    res.json({ message: 'Password updated. You can log in with the new password.' });
+  } catch (error) {
+    next(error);
+  }
 };

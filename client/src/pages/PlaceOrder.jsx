@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
-import { products } from '../data/mockData.js';
+import { products as fallbackProducts } from '../data/mockData.js';
 import { useCustomer } from '../context/CustomerContext.jsx';
+import { toast } from '../context/ToastContext.jsx';
 import { formatPrice } from '../utils/format.js';
 import { DELIVERY_SLOTS, tomorrowIso } from '../utils/checkout.js';
 
 const PlaceOrder = () => {
   const { id } = useParams();
   const [params] = useSearchParams();
-  const { user, placeOrder } = useCustomer();
-  const product = products.find((item) => item.id === Number(id));
+  const { user, placeOrder, products: liveProducts } = useCustomer();
+  const products = liveProducts?.length ? liveProducts : fallbackProducts;
+  const product = products.find((item) => String(item.id) === String(id));
   const [qty, setQty] = useState(Number(params.get('qty')) || 1);
   const [form, setForm] = useState({
     customerName: user?.name || '',
@@ -49,8 +51,11 @@ const PlaceOrder = () => {
         address: form.address,
       });
       setSuccess(order);
+      toast.success('Order placed successfully!', `${order.productName} · ${order.id} is now Pending.`);
     } catch (err) {
-      setError(err.message || 'Could not place this order. Please try again.');
+      const message = err.message || 'Could not place this order. Please try again.';
+      setError(message);
+      toast.error('Could not place order', message);
     } finally {
       setSaving(false);
     }

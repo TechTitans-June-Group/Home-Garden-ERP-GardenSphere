@@ -23,6 +23,11 @@ import seedFertilizer from './utils/seedFertilizer.js';
 import fertilizerRoutes from './routes/fertilizerRoutes.js';
 import seedPests from './utils/seedPests.js';
 import pestRoutes from './routes/pestRoutes.js';
+import seedMaintenance from './utils/seedMaintenance.js';
+import maintenanceRoutes from './routes/maintenanceRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import customerRoutes from './routes/customerRoutes.js';
+import shopRoutes from './routes/shopRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -49,6 +54,10 @@ app.get('/', (req, res) => {
       finance: '/api/finance',
       harvest: '/api/harvest',
       contact: '/api/contact',
+      maintenance: '/api/maintenance',
+      users: '/api/users',
+      customer: '/api/customer',
+      shop: '/api/shop',
     },
   });
 });
@@ -64,6 +73,10 @@ app.use('/api/crops', cropRoutes);
 app.use('/api/irrigation', irrigationRoutes);
 app.use('/api/fertilizers', fertilizerRoutes);
 app.use('/api/pests', pestRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/customer', customerRoutes);
+app.use('/api/shop', shopRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: `Route not found: ${req.originalUrl}` });
@@ -84,6 +97,7 @@ const startServer = async () => {
     await seedIrrigation();
     await seedFertilizer();
     await seedPests();
+    await seedMaintenance();
 
     const server = app.listen(PORT, () => {
       console.log(`GardenSphere API listening on port ${PORT}`);

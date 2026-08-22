@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import FeedbackModal from '../components/FeedbackModal.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useCustomer } from '../context/CustomerContext.jsx';
+import { toast } from '../context/ToastContext.jsx';
 import { formatDate, formatPrice } from '../utils/format.js';
 import { products } from '../data/mockData.js';
 
@@ -104,6 +105,7 @@ const OrderHistory = () => {
           submitFeedback(feedbackOrder.id, rating, comment);
           setFeedbackOrder(null);
           setMessage('Feedback submitted. Thank you!');
+          toast.success('Feedback submitted', 'Thank you for rating your harvest.');
         }}
       />
     </div>
